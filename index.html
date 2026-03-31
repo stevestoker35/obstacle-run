@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obstacle Run!</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
+  canvas { border: 2px solid #333; border-radius: 8px; }
+  .overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(0,0,0,0.88); color: #fff; z-index: 10;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 { font-size: 52px; margin-bottom: 10px; }
+  .overlay p { font-size: 18px; margin: 5px 0; color: #ccc; }
+  .key { color: #FFD700; font-weight: bold; }
+  .btn { padding: 14px 36px; font-size: 22px; cursor: pointer; border: 2px solid #555; border-radius: 12px; font-weight: bold; color: #fff; background: #444; transition: 0.2s; margin: 10px; }
+  .btn:hover { background: #666; transform: scale(1.05); }
+  #startScreen h1 { color: #ff6644; text-shadow: 0 0 20px #ff4400; }
+  #deathScreen h1 { color: #ff4444; font-size: 48px; }
+  #winScreen h1 { color: #44ff66; font-size: 48px; text-shadow: 0 0 20px #22cc44; }
+  .level-select { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 15px 0; }
+  .lvl-btn { padding: 10px 18px; font-size: 16px; cursor: pointer; border: 2px solid #555; border-radius: 8px; color: #fff; background: #333; font-weight: bold; transition: 0.2s; }
+  .lvl-btn:hover { background: #555; border-color: #888; }
+  .lvl-btn.locked { opacity: 0.4; cursor: not-allowed; }
+  .lvl-btn.completed { border-color: #44ff66; color: #44ff66; }
+  .lvl-btn.current { border-color: #FFD700; color: #FFD700; }
+</style>
+</head>
+<body>
+
+<div id="startScreen" class="overlay">
+  <h1>OBSTACLE RUN!</h1>
+  <p><span class="key">Arrow Keys / WASD</span> — Move &nbsp; <span class="key">SPACE / UP</span> — Jump</p>
+  <p><span class="key">SPACE (in air)</span> — Double Jump &nbsp; <span class="key">DOWN / S</span> — Slide</p>
+  <p>Get through each level's obstacles to win!</p>
+  <div class="level-select" id="levelSelect"></div>
+  <button class="btn" onclick="startGame(selectedLevel)">PLAY</button>
+</div>
+
+<div id="deathScreen" class="overlay hidden">
+  <h1>WRECKED!</h1>
+  <p>Level: <span id="deathLevel">1</span></p>
+  <p id="deathMsg"></p>
+  <button class="btn" onclick="startGame(currentLevel)">RETRY</button>
+  <button class="btn" onclick="showStart()">LEVELS</button>
+</div>
+
+<div id="winScreen" class="overlay hidden">
+  <h1>LEVEL COMPLETE!</h1>
+  <p>Level <span id="winLevel">1</span> cleared!</p>
+  <p id="winTime"></p>
+  <button class="btn" onclick="startGame(currentLevel+1)" id="nextBtn">NEXT LEVEL</button>
+  <button class="btn" onclick="showStart()">LEVELS</button>
+</div>
+
+<canvas id="game" width="960" height="540"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 960, H = 540;
+
+// Save data
+let saveData = JSON.parse(localStorage.getItem('obstacleRunSave') || 'null') || { unlocked: 1, bestTimes: {} };
+function save() { localStorage.setItem('obstacleRunSave', JSON.stringify(saveData)); }
+
+let currentLevel = 1;
+let selectedLevel = 1;
+let gameRunning = false;
+let keys = {};
+let player, camera, obstacles, platforms, hazards, coins, goal, particles, floatingTexts;
+let levelTime = 0;
+let deathCount = 0;
+let checkpointX = 0, checkpointY = 0;
+let bgLayers = [];
+
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if([' ','arrowup','arrowdown'].includes(e.key.toLowerCase())) e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+const GRAVITY = 0.6;
+const JUMP_FORCE = -12;
+const MOVE_SPEED = 5;
+const MAX_FALL = 15;
+const SLIDE_SPEED = 7;
+
+// ============= PLAYER =============
+function createPlayer(x, y) {
+  return {
+    x: x, y: y, vx: 0, vy: 0,
+    w: 28, h: 44,
+    onGround: false, jumping: false,
+    doubleJump: false, hasDoubleJump: true,
+    sliding: false, slideTimer: 0,
+    facing: 1,
+    animFrame: 0, animTimer: 0,
+    dead: false, winTimer: 0,
+    trailTimer: 0,
+    wallSliding: false,
+    dashCool: 0
+  };
+}
+
+// ============= LEVELS =============
+const LEVELS = [];
+
+// Level 1: The Basics - simple jumps
+LEVELS[1] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 300, h: 40 },
+    { x: 350, y: H-40, w: 120, h: 40 },
+    { x: 520, y: H-80, w: 120, h: 80 },
+    { x: 700, y: H-120, w: 100, h: 120 },
+    { x: 860, y: H-80, w: 140, h: 80 },
+    { x: 1060, y: H-40, w: 200, h: 40 },
+    { x: 1320, y: H-80, w: 100, h: 80 },
+    { x: 1480, y: H-120, w: 100, h: 120 },
+    { x: 1640, y: H-80, w: 120, h: 80 },
+    { x: 1820, y: H-40, w: 300, h: 40 },
+  ];
+  let haz = [
+    { x: 300, y: H-20, w: 50, h: 20, type: 'spikes' },
+    { x: 1260, y: H-20, w: 60, h: 20, type: 'spikes' },
+  ];
+  let cns = [
+    { x: 380, y: H-80, r: 10 }, { x: 550, y: H-120, r: 10 },
+    { x: 730, y: H-160, r: 10 }, { x: 1350, y: H-120, r: 10 },
+    { x: 1510, y: H-160, r: 10 }, { x: 1680, y: H-120, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 2020, y: H-90, w: 40, h: 50 }, bg: 'city' };
+};
+
+// Level 2: Moving platforms & more spikes
+LEVELS[2] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 200, h: 40 },
+    { x: 300, y: H-100, w: 100, h: 20, moving: true, moveX: 80, speed: 1.5 },
+    { x: 500, y: H-160, w: 100, h: 20, moving: true, moveY: 60, speed: 1.2 },
+    { x: 700, y: H-100, w: 80, h: 20 },
+    { x: 850, y: H-160, w: 80, h: 20, moving: true, moveX: 60, speed: 2 },
+    { x: 1050, y: H-100, w: 150, h: 40 },
+    { x: 1260, y: H-140, w: 80, h: 20, moving: true, moveY: 80, speed: 1 },
+    { x: 1440, y: H-100, w: 100, h: 20 },
+    { x: 1600, y: H-60, w: 80, h: 20, moving: true, moveX: 100, speed: 1.8 },
+    { x: 1800, y: H-40, w: 250, h: 40 },
+  ];
+  let haz = [
+    { x: 200, y: H-20, w: 100, h: 20, type: 'spikes' },
+    { x: 1050, y: H-60, w: 150, h: 15, type: 'spikes' },
+  ];
+  let cns = [
+    { x: 350, y: H-140, r: 10 }, { x: 550, y: H-200, r: 10 },
+    { x: 730, y: H-140, r: 10 }, { x: 890, y: H-200, r: 10 },
+    { x: 1300, y: H-200, r: 10 }, { x: 1640, y: H-100, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1920, y: H-90, w: 40, h: 50 }, bg: 'night' };
+};
+
+// Level 3: Saw blades & tight jumps
+LEVELS[3] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 180, h: 40 },
+    { x: 240, y: H-80, w: 60, h: 20 },
+    { x: 380, y: H-130, w: 60, h: 20 },
+    { x: 500, y: H-80, w: 60, h: 20 },
+    { x: 620, y: H-40, w: 120, h: 40 },
+    { x: 820, y: H-80, w: 60, h: 20 },
+    { x: 960, y: H-140, w: 60, h: 20 },
+    { x: 1100, y: H-200, w: 80, h: 20 },
+    { x: 1260, y: H-140, w: 60, h: 20 },
+    { x: 1380, y: H-80, w: 120, h: 40 },
+    { x: 1560, y: H-120, w: 80, h: 20, moving: true, moveX: 60, speed: 2 },
+    { x: 1740, y: H-40, w: 250, h: 40 },
+  ];
+  let haz = [
+    { x: 180, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 450, y: H-100, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 740, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 900, y: H-60, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1200, y: H-160, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1500, y: H-20, w: 60, h: 20, type: 'spikes' },
+  ];
+  let cns = [
+    { x: 270, y: H-120, r: 10 }, { x: 410, y: H-170, r: 10 },
+    { x: 990, y: H-180, r: 10 }, { x: 1130, y: H-240, r: 10 },
+    { x: 1600, y: H-160, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1880, y: H-90, w: 40, h: 50 }, bg: 'factory' };
+};
+
+// Level 4: Crushing walls & falling platforms
+LEVELS[4] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 200, h: 40 },
+    { x: 280, y: H-80, w: 80, h: 20, falling: true, fallDelay: 30 },
+    { x: 420, y: H-130, w: 80, h: 20, falling: true, fallDelay: 30 },
+    { x: 560, y: H-80, w: 100, h: 40 },
+    { x: 740, y: H-40, w: 60, h: 40 },
+    { x: 880, y: H-100, w: 80, h: 20, moving: true, moveY: 50, speed: 1.5 },
+    { x: 1040, y: H-160, w: 80, h: 20, falling: true, fallDelay: 25 },
+    { x: 1180, y: H-100, w: 60, h: 20, falling: true, fallDelay: 25 },
+    { x: 1300, y: H-40, w: 100, h: 40 },
+    { x: 1480, y: H-100, w: 80, h: 20, moving: true, moveX: 70, speed: 2 },
+    { x: 1660, y: H-140, w: 80, h: 20 },
+    { x: 1820, y: H-40, w: 250, h: 40 },
+  ];
+  let haz = [
+    { x: 200, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 660, y: 80, w: 40, h: 100, type: 'crusher', crushSpeed: 3, crushDelay: 90 },
+    { x: 1150, y: 80, w: 40, h: 100, type: 'crusher', crushSpeed: 4, crushDelay: 70 },
+    { x: 560, y: H-40, w: 0, h: 0, type: 'saw', r: 18, moveY: 80, speed: 1 },
+    { x: 1400, y: H-20, w: 100, h: 20, type: 'spikes' },
+    { x: 1760, y: H-100, w: 0, h: 0, type: 'saw', r: 22 },
+  ];
+  let cns = [
+    { x: 310, y: H-120, r: 10 }, { x: 450, y: H-170, r: 10 },
+    { x: 920, y: H-160, r: 10 }, { x: 1080, y: H-200, r: 10 },
+    { x: 1520, y: H-140, r: 10 }, { x: 1700, y: H-180, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1960, y: H-90, w: 40, h: 50 }, bg: 'city' };
+};
+
+// Level 5: Wall jumps & vertical challenge
+LEVELS[5] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 150, h: 40 },
+    { x: 200, y: H-40, w: 40, h: 200, wall: true },
+    { x: 350, y: H-40, w: 40, h: 200, wall: true },
+    { x: 200, y: H-240, w: 190, h: 20 },
+    { x: 450, y: H-160, w: 80, h: 20 },
+    { x: 580, y: H-40, w: 40, h: 300, wall: true },
+    { x: 720, y: H-40, w: 40, h: 300, wall: true },
+    { x: 580, y: H-340, w: 180, h: 20 },
+    { x: 820, y: H-260, w: 80, h: 20, moving: true, moveX: 80, speed: 1.5 },
+    { x: 1020, y: H-200, w: 100, h: 20 },
+    { x: 1180, y: H-140, w: 80, h: 20, falling: true, fallDelay: 20 },
+    { x: 1320, y: H-200, w: 80, h: 20 },
+    { x: 1460, y: H-260, w: 100, h: 20 },
+    { x: 1620, y: H-40, w: 250, h: 40 },
+  ];
+  let haz = [
+    { x: 150, y: H-20, w: 50, h: 20, type: 'spikes' },
+    { x: 260, y: H-100, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 640, y: H-160, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1100, y: H-170, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1560, y: H-20, w: 60, h: 20, type: 'spikes' },
+  ];
+  let cns = [
+    { x: 280, y: H-180, r: 10 }, { x: 650, y: H-280, r: 10 },
+    { x: 860, y: H-300, r: 10 }, { x: 1060, y: H-240, r: 10 },
+    { x: 1360, y: H-240, r: 10 }, { x: 1500, y: H-300, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1760, y: H-90, w: 40, h: 50 }, bg: 'night' };
+};
+
+// Level 6: Lava level - fire everywhere
+LEVELS[6] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 140, h: 40 },
+    { x: 200, y: H-80, w: 60, h: 20 },
+    { x: 320, y: H-130, w: 60, h: 20, moving: true, moveX: 50, speed: 2 },
+    { x: 460, y: H-80, w: 60, h: 20, falling: true, fallDelay: 20 },
+    { x: 580, y: H-130, w: 80, h: 20 },
+    { x: 740, y: H-80, w: 60, h: 20, moving: true, moveY: 40, speed: 1.5 },
+    { x: 880, y: H-140, w: 80, h: 20 },
+    { x: 1020, y: H-80, w: 60, h: 20, falling: true, fallDelay: 18 },
+    { x: 1140, y: H-130, w: 60, h: 20, falling: true, fallDelay: 18 },
+    { x: 1260, y: H-180, w: 80, h: 20 },
+    { x: 1420, y: H-120, w: 60, h: 20, moving: true, moveX: 60, speed: 2.5 },
+    { x: 1580, y: H-80, w: 60, h: 20 },
+    { x: 1720, y: H-40, w: 200, h: 40 },
+  ];
+  let haz = [
+    { x: 140, y: H-10, w: 1580, h: 20, type: 'lava' },
+    { x: 450, y: H-100, w: 0, h: 0, type: 'saw', r: 18, moveY: 50, speed: 1.2 },
+    { x: 700, y: H-40, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 1000, y: H-50, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1380, y: H-80, w: 0, h: 0, type: 'saw', r: 16, moveY: 40, speed: 1.5 },
+  ];
+  let cns = [
+    { x: 230, y: H-120, r: 10 }, { x: 360, y: H-170, r: 10 },
+    { x: 610, y: H-170, r: 10 }, { x: 920, y: H-180, r: 10 },
+    { x: 1300, y: H-220, r: 10 }, { x: 1460, y: H-160, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1830, y: H-90, w: 40, h: 50 }, bg: 'lava' };
+};
+
+// Level 7: Speed run - lasers & timing
+LEVELS[7] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 160, h: 40 },
+    { x: 220, y: H-40, w: 80, h: 40 },
+    { x: 380, y: H-40, w: 80, h: 40 },
+    { x: 540, y: H-80, w: 100, h: 20, moving: true, moveX: 60, speed: 3 },
+    { x: 740, y: H-40, w: 60, h: 40 },
+    { x: 880, y: H-80, w: 60, h: 20 },
+    { x: 1000, y: H-130, w: 60, h: 20, moving: true, moveY: 60, speed: 2 },
+    { x: 1140, y: H-80, w: 80, h: 20, falling: true, fallDelay: 15 },
+    { x: 1280, y: H-130, w: 80, h: 20, falling: true, fallDelay: 15 },
+    { x: 1420, y: H-40, w: 80, h: 40 },
+    { x: 1560, y: H-100, w: 60, h: 20, moving: true, moveX: 80, speed: 2.5 },
+    { x: 1740, y: H-140, w: 80, h: 20 },
+    { x: 1900, y: H-40, w: 200, h: 40 },
+  ];
+  let haz = [
+    { x: 160, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 300, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 120, laserOn: 60 },
+    { x: 460, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 680, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 100, laserOn: 50 },
+    { x: 800, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 1080, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 90, laserOn: 45 },
+    { x: 1500, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 1650, y: H-100, w: 0, h: 0, type: 'saw', r: 22, moveY: 60, speed: 2 },
+    { x: 1850, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 80, laserOn: 40 },
+  ];
+  let cns = [
+    { x: 250, y: H-80, r: 10 }, { x: 580, y: H-120, r: 10 },
+    { x: 910, y: H-120, r: 10 }, { x: 1040, y: H-180, r: 10 },
+    { x: 1600, y: H-140, r: 10 }, { x: 1780, y: H-180, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 2000, y: H-90, w: 40, h: 50 }, bg: 'factory' };
+};
+
+// Level 8: The Gauntlet - everything combined
+LEVELS[8] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 120, h: 40 },
+    { x: 180, y: H-90, w: 60, h: 20, falling: true, fallDelay: 18 },
+    { x: 300, y: H-140, w: 60, h: 20, moving: true, moveX: 50, speed: 2.5 },
+    { x: 440, y: H-40, w: 40, h: 200, wall: true },
+    { x: 560, y: H-40, w: 40, h: 200, wall: true },
+    { x: 440, y: H-240, w: 160, h: 20 },
+    { x: 660, y: H-160, w: 60, h: 20, falling: true, fallDelay: 15 },
+    { x: 780, y: H-100, w: 60, h: 20, moving: true, moveY: 50, speed: 2 },
+    { x: 920, y: H-160, w: 80, h: 20 },
+    { x: 1080, y: H-100, w: 60, h: 20, falling: true, fallDelay: 12 },
+    { x: 1200, y: H-160, w: 60, h: 20, moving: true, moveX: 60, speed: 3 },
+    { x: 1380, y: H-220, w: 80, h: 20 },
+    { x: 1520, y: H-160, w: 60, h: 20, falling: true, fallDelay: 12 },
+    { x: 1640, y: H-100, w: 60, h: 20, moving: true, moveY: 80, speed: 2 },
+    { x: 1780, y: H-40, w: 40, h: 250, wall: true },
+    { x: 1900, y: H-40, w: 40, h: 250, wall: true },
+    { x: 1780, y: H-290, w: 160, h: 20 },
+    { x: 2000, y: H-200, w: 80, h: 20 },
+    { x: 2140, y: H-40, w: 200, h: 40 },
+  ];
+  let haz = [
+    { x: 120, y: H-10, w: 320, h: 20, type: 'lava' },
+    { x: 490, y: H-120, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 600, y: H-20, w: 180, h: 20, type: 'spikes' },
+    { x: 850, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 90, laserOn: 45 },
+    { x: 1000, y: H-60, w: 0, h: 0, type: 'saw', r: 20, moveY: 60, speed: 1.5 },
+    { x: 1300, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 80, laserOn: 35 },
+    { x: 1450, y: H-180, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 1700, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 1840, y: H-140, w: 0, h: 0, type: 'saw', r: 18, moveY: 50, speed: 2 },
+    { x: 2100, y: H-20, w: 40, h: 20, type: 'spikes' },
+  ];
+  let cns = [
+    { x: 210, y: H-130, r: 10 }, { x: 340, y: H-180, r: 10 },
+    { x: 500, y: H-200, r: 10 }, { x: 820, y: H-140, r: 10 },
+    { x: 960, y: H-200, r: 10 }, { x: 1240, y: H-200, r: 10 },
+    { x: 1420, y: H-260, r: 10 }, { x: 1840, y: H-240, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 2240, y: H-90, w: 40, h: 50 }, bg: 'lava' };
+};
+
+const TOTAL_LEVELS = 8;
+
+// ============= LEVEL SELECT =============
+function buildLevelSelect() {
+  let sel = document.getElementById('levelSelect');
+  sel.innerHTML = '';
+  for (let i = 1; i <= TOTAL_LEVELS; i++) {
+    let btn = document.createElement('button');
+    btn.className = 'lvl-btn';
+    if (i > saveData.unlocked) btn.classList.add('locked');
+    else if (saveData.bestTimes[i]) btn.classList.add('completed');
+    if (i === selectedLevel) btn.classList.add('current');
+    btn.textContent = 'Level ' + i;
+    btn.onclick = () => { if (i <= saveData.unlocked) { selectedLevel = i; buildLevelSelect(); } };
+    sel.appendChild(btn);
+  }
+}
+
+function showStart() {
+  document.getElementById('startScreen').classList.remove('hidden');
+  document.getElementById('deathScreen').classList.add('hidden');
+  document.getElementById('winScreen').classList.add('hidden');
+  buildLevelSelect();
+}
+
+// ============= INIT LEVEL =============
+function loadLevel(num) {
+  if (num > TOTAL_LEVELS) { showStart(); return; }
+  let data = LEVELS[num]();
+  platforms = data.platforms.map(p => ({
+    ...p, origX: p.x, origY: p.y, timer: 0,
+    fallState: 0, fallVy: 0, shakeTimer: 0, stepped: false
+  }));
+  hazards = data.hazards.map(h => ({
+    ...h, origX: h.x, origY: h.y, timer: 0,
+    crushState: h.type === 'crusher' ? 'waiting' : null, crushY: h.y, crushWait: 0
+  }));
+  coins = data.coins.map(c => ({ ...c, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
+  goal = data.goal;
+  player = createPlayer(data.start.x, data.start.y);
+  checkpointX = data.start.x;
+  checkpointY = data.start.y;
+  camera = { x: 0, y: 0 };
+  particles = [];
+  floatingTexts = [];
+  levelTime = 0;
+  currentLevel = num;
+
+  // Background layers
+  bgLayers = [];
+  if (data.bg === 'city') {
+    bgLayers = [{ type: 'city', scroll: 0.2 }, { type: 'buildings', scroll: 0.4 }];
+  } else if (data.bg === 'night') {
+    bgLayers = [{ type: 'stars', scroll: 0.05 }, { type: 'moon', scroll: 0.1 }];
+  } else if (data.bg === 'factory') {
+    bgLayers = [{ type: 'gears', scroll: 0.15 }, { type: 'pipes', scroll: 0.3 }];
+  } else if (data.bg === 'lava') {
+    bgLayers = [{ type: 'lava_bg', scroll: 0.1 }, { type: 'rocks', scroll: 0.3 }];
+  }
+}
+
+function startGame(level) {
+  if (level > TOTAL_LEVELS) { showStart(); return; }
+  if (level > saveData.unlocked) level = saveData.unlocked;
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('deathScreen').classList.add('hidden');
+  document.getElementById('winScreen').classList.add('hidden');
+  loadLevel(level);
+  gameRunning = true;
+  if (!loopRunning) { loopRunning = true; loop(); }
+}
+
+let loopRunning = false;
+
+// ============= UPDATE =============
+function updatePlayer() {
+  if (player.dead) return;
+
+  // Horizontal movement
+  let moveDir = 0;
+  if (keys['arrowleft'] || keys['a']) moveDir = -1;
+  if (keys['arrowright'] || keys['d']) moveDir = 1;
+
+  if (player.sliding) {
+    player.slideTimer--;
+    player.vx = player.facing * SLIDE_SPEED;
+    if (player.slideTimer <= 0) {
+      player.sliding = false;
+      player.h = 44;
+      player.y -= 20;
+    }
+  } else {
+    player.vx = moveDir * MOVE_SPEED;
+    if (moveDir !== 0) player.facing = moveDir;
+
+    // Slide
+    if ((keys['arrowdown'] || keys['s']) && player.onGround && Math.abs(player.vx) > 0) {
+      player.sliding = true;
+      player.slideTimer = 20;
+      player.h = 24;
+      player.y += 20;
+    }
+  }
+
+  // Jump
+  if (keys[' '] || keys['arrowup'] || keys['w']) {
+    if (player.onGround && !player.jumping) {
+      player.vy = JUMP_FORCE;
+      player.jumping = true;
+      player.onGround = false;
+      spawnJumpParticles();
+    } else if (!player.onGround && player.hasDoubleJump && !player.doubleJump && player.vy > -5) {
+      player.vy = JUMP_FORCE * 0.85;
+      player.doubleJump = true;
+      spawnJumpParticles();
+    }
+    // Wall jump
+    if (player.wallSliding) {
+      player.vy = JUMP_FORCE * 0.9;
+      player.vx = -player.facing * 8;
+      player.facing = -player.facing;
+      player.wallSliding = false;
+      player.doubleJump = false;
+      spawnJumpParticles();
+    }
+  }
+  if (!keys[' '] && !keys['arrowup'] && !keys['w']) {
+    player.jumping = false;
+  }
+
+  // Gravity
+  player.vy += GRAVITY;
+  if (player.vy > MAX_FALL) player.vy = MAX_FALL;
+
+  // Wall sliding
+  player.wallSliding = false;
+  if (!player.onGround && player.vy > 0) {
+    for (let p of platforms) {
+      if (p.wall) {
+        if (player.x + player.w > p.x && player.x < p.x + p.w &&
+            player.y + player.h > p.y && player.y < p.y + p.h) {
+          if (moveDir !== 0) {
+            player.wallSliding = true;
+            player.vy = Math.min(player.vy, 2);
+            player.doubleJump = false;
+          }
+        }
+      }
+    }
+  }
+
+  // Apply velocity
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // Platform collision
+  player.onGround = false;
+  for (let p of platforms) {
+    if (p.fallState === 2) continue; // fallen off screen
+    let px = p.x, py = p.y;
+
+    // Horizontal collision
+    if (player.y + player.h > py + 4 && player.y < py + p.h - 4) {
+      if (player.x + player.w > px && player.x + player.w < px + 10 && player.vx > 0) {
+        player.x = px - player.w;
+      }
+      if (player.x < px + p.w && player.x > px + p.w - 10 && player.vx < 0) {
+        player.x = px + p.w;
+      }
+    }
+
+    // Vertical collision (land on top)
+    if (player.x + player.w > px + 4 && player.x < px + p.w - 4) {
+      if (player.vy >= 0 && player.y + player.h >= py && player.y + player.h <= py + player.vy + 10) {
+        player.y = py - player.h;
+        player.vy = 0;
+        player.onGround = true;
+        player.doubleJump = false;
+        player.hasDoubleJump = true;
+
+        // Falling platform trigger
+        if (p.falling && !p.stepped) {
+          p.stepped = true;
+          p.shakeTimer = p.fallDelay || 30;
+        }
+
+        // Move with moving platform
+        if (p.moving) {
+          if (p.moveX) player.x += Math.cos(p.timer) * p.speed;
+          if (p.moveY) player.y += Math.cos(p.timer) * p.speed;
+        }
+      }
+      // Hit head on bottom
+      if (player.vy < 0 && player.y <= py + p.h && player.y > py + p.h - 10) {
+        player.y = py + p.h;
+        player.vy = 0;
+      }
+    }
+  }
+
+  // Fell off screen
+  if (player.y > H + 50) {
+    killPlayer();
+  }
+
+  // Animation
+  player.animTimer++;
+  if (Math.abs(player.vx) > 0.5 && player.onGround) {
+    if (player.animTimer % 6 === 0) player.animFrame = (player.animFrame + 1) % 4;
+  } else if (!player.onGround) {
+    player.animFrame = 5;
+  } else {
+    player.animFrame = 0;
+  }
+
+  // Trail particles
+  player.trailTimer++;
+  if (player.trailTimer % 3 === 0 && (Math.abs(player.vx) > 3 || Math.abs(player.vy) > 5)) {
+    particles.push({
+      x: player.x + player.w/2, y: player.y + player.h,
+      vx: (Math.random()-0.5)*1, vy: (Math.random()-0.5)*1,
+      life: 10, maxLife: 10, r: 3, color: 'rgba(255,255,255,0.3)'
+    });
+  }
+}
+
+function updatePlatforms() {
+  for (let p of platforms) {
+    if (p.moving) {
+      p.timer += 0.02 * (p.speed || 1);
+      if (p.moveX) p.x = p.origX + Math.sin(p.timer) * p.moveX;
+      if (p.moveY) p.y = p.origY + Math.sin(p.timer) * p.moveY;
+    }
+    if (p.falling && p.stepped) {
+      if (p.shakeTimer > 0) {
+        p.shakeTimer--;
+        p.x = p.origX + (Math.random()-0.5) * 4;
+      } else if (p.fallState === 0) {
+        p.fallState = 1;
+        p.fallVy = 0;
+      }
+    }
+    if (p.fallState === 1) {
+      p.fallVy += 0.4;
+      p.y += p.fallVy;
+      if (p.y > H + 100) p.fallState = 2;
+    }
+  }
+}
+
+function updateHazards() {
+  for (let h of hazards) {
+    h.timer++;
+    if (h.type === 'saw') {
+      if (h.moveY) h.y = h.origY + Math.sin(h.timer * 0.02 * (h.speed||1)) * h.moveY;
+      if (h.moveX) h.x = h.origX + Math.sin(h.timer * 0.02 * (h.speed||1)) * h.moveX;
+    }
+    if (h.type === 'crusher') {
+      if (h.crushState === 'waiting') {
+        h.crushWait++;
+        if (h.crushWait >= (h.crushDelay||90)) { h.crushState = 'falling'; h.crushWait = 0; }
+      } else if (h.crushState === 'falling') {
+        h.crushY += (h.crushSpeed||3);
+        if (h.crushY > H - 60) { h.crushState = 'rising'; }
+      } else if (h.crushState === 'rising') {
+        h.crushY -= 1.5;
+        if (h.crushY <= h.origY) { h.crushY = h.origY; h.crushState = 'waiting'; }
+      }
+    }
+  }
+}
+
+function checkHazards() {
+  if (player.dead) return;
+  for (let h of hazards) {
+    if (h.type === 'spikes') {
+      if (player.x+player.w > h.x && player.x < h.x+h.w && player.y+player.h > h.y && player.y < h.y+h.h) {
+        killPlayer(); return;
+      }
+    }
+    if (h.type === 'lava') {
+      if (player.x+player.w > h.x && player.x < h.x+h.w && player.y+player.h > h.y) {
+        killPlayer(); return;
+      }
+    }
+    if (h.type === 'saw') {
+      let dx = (player.x+player.w/2) - h.x, dy = (player.y+player.h/2) - h.y;
+      let dist = Math.sqrt(dx*dx+dy*dy);
+      if (dist < (h.r||20) + 15) { killPlayer(); return; }
+    }
+    if (h.type === 'crusher') {
+      if (player.x+player.w > h.x && player.x < h.x+h.w && player.y+player.h > h.crushY && player.y < h.crushY+h.h) {
+        killPlayer(); return;
+      }
+    }
+    if (h.type === 'laser') {
+      let cycle = h.laserCycle || 120;
+      let onTime = h.laserOn || 60;
+      if (h.timer % cycle < onTime) {
+        if (player.x+player.w > h.x && player.x < h.x + (h.w||10) &&
+            player.y+player.h > h.y && player.y < h.y + (h.laserLen||300)) {
+          killPlayer(); return;
+        }
+      }
+    }
+  }
+}
+
+function checkCoins() {
+  for (let c of coins) {
+    if (c.collected) continue;
+    c.bobTimer += 0.05;
+    let cx = c.x, cy = c.y + Math.sin(c.bobTimer) * 4;
+    let dx = (player.x+player.w/2) - cx, dy = (player.y+player.h/2) - cy;
+    if (Math.sqrt(dx*dx+dy*dy) < c.r + 18) {
+      c.collected = true;
+      floatingTexts.push({ x: cx, y: cy, text: '+10', life: 30, maxLife: 30, color: '#FFD700' });
+      for (let i = 0; i < 8; i++) {
+        let a = Math.random()*Math.PI*2;
+        particles.push({ x: cx, y: cy, vx: Math.cos(a)*3, vy: Math.sin(a)*3, life: 15, maxLife: 15, r: 3, color: '#FFD700' });
+      }
+    }
+  }
+}
+
+function checkGoal() {
+  if (player.dead) return;
+  if (player.x+player.w > goal.x && player.x < goal.x+goal.w && player.y+player.h > goal.y && player.y < goal.y+goal.h) {
+    winLevel();
+  }
+}
+
+function killPlayer() {
+  if (player.dead) return;
+  player.dead = true;
+  deathCount++;
+  for (let i = 0; i < 20; i++) {
+    let a = Math.random()*Math.PI*2, s = 2+Math.random()*4;
+    particles.push({ x: player.x+player.w/2, y: player.y+player.h/2, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 25, maxLife: 25, r: 3+Math.random()*3, color: ['#ff4444','#ffaa00','#fff'][Math.floor(Math.random()*3)] });
+  }
+  setTimeout(() => {
+    document.getElementById('deathLevel').textContent = currentLevel;
+    document.getElementById('deathMsg').textContent = 'Deaths: ' + deathCount;
+    document.getElementById('deathScreen').classList.remove('hidden');
+    gameRunning = false;
+  }, 600);
+}
+
+function winLevel() {
+  gameRunning = false;
+  let timeStr = (levelTime / 60).toFixed(1) + 's';
+  if (!saveData.bestTimes[currentLevel] || levelTime < saveData.bestTimes[currentLevel]) {
+    saveData.bestTimes[currentLevel] = levelTime;
+  }
+  if (currentLevel >= saveData.unlocked && currentLevel < TOTAL_LEVELS) {
+    saveData.unlocked = currentLevel + 1;
+  }
+  save();
+  document.getElementById('winLevel').textContent = currentLevel;
+  document.getElementById('winTime').textContent = 'Time: ' + timeStr + (saveData.bestTimes[currentLevel] === levelTime ? ' (New best!)' : '');
+  document.getElementById('nextBtn').style.display = currentLevel < TOTAL_LEVELS ? 'inline-block' : 'none';
+  document.getElementById('winScreen').classList.remove('hidden');
+  // Win particles
+  for (let i = 0; i < 30; i++) {
+    let a = Math.random()*Math.PI*2, s = 2+Math.random()*5;
+    particles.push({ x: player.x+player.w/2, y: player.y+player.h/2, vx: Math.cos(a)*s, vy: Math.sin(a)*s-3, life: 40, maxLife: 40, r: 3+Math.random()*4, color: ['#44ff66','#FFD700','#44ddff','#ff44aa'][Math.floor(Math.random()*4)] });
+  }
+}
+
+function spawnJumpParticles() {
+  for (let i = 0; i < 6; i++) {
+    particles.push({
+      x: player.x + player.w/2 + (Math.random()-0.5)*20,
+      y: player.y + player.h,
+      vx: (Math.random()-0.5)*3, vy: 1+Math.random()*2,
+      life: 12, maxLife: 12, r: 2+Math.random()*2, color: 'rgba(200,200,200,0.5)'
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length-1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.1;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  for (let i = floatingTexts.length-1; i >= 0; i--) {
+    floatingTexts[i].y -= 1.5;
+    floatingTexts[i].life--;
+    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+  }
+}
+
+function updateCamera() {
+  let targetX = player.x - W/3;
+  let targetY = player.y - H/2;
+  camera.x += (targetX - camera.x) * 0.08;
+  camera.y += (targetY - camera.y) * 0.05;
+  if (camera.y > 0) camera.y = 0;
+  if (camera.x < 0) camera.x = 0;
+}
+
+// ============= DRAWING =============
+function drawBackground() {
+  let bg = bgLayers;
+  // Base sky
+  let grad;
+  if (bg[0] && bg[0].type === 'lava_bg') {
+    grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, '#1a0a00'); grad.addColorStop(0.6, '#331100'); grad.addColorStop(1, '#662200');
+  } else if (bg[0] && bg[0].type === 'stars') {
+    grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, '#050515'); grad.addColorStop(1, '#0a0a2a');
+  } else if (bg[0] && bg[0].type === 'gears') {
+    grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, '#1a1a1a'); grad.addColorStop(1, '#2a2a2a');
+  } else {
+    grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, '#0a1628'); grad.addColorStop(1, '#1a3050');
+  }
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  // Parallax elements
+  for (let layer of bg) {
+    let ox = -camera.x * layer.scroll;
+    ctx.save();
+    if (layer.type === 'stars') {
+      for (let i = 0; i < 60; i++) {
+        let sx = ((i*73+ox*0.3)%W+W)%W, sy = (i*37)%H*0.7;
+        ctx.fillStyle = `rgba(255,255,255,${0.3+Math.random()*0.4})`;
+        ctx.beginPath(); ctx.arc(sx, sy, 1+Math.random(), 0, Math.PI*2); ctx.fill();
+      }
+    }
+    if (layer.type === 'moon') {
+      ctx.fillStyle = '#ddeeff';
+      ctx.beginPath(); ctx.arc(((W*0.8+ox*0.5)%W+W)%W, 80, 30, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#bbccdd';
+      ctx.beginPath(); ctx.arc(((W*0.8+ox*0.5)%W+W)%W+5, 75, 8, 0, Math.PI*2); ctx.fill();
+    }
+    if (layer.type === 'city' || layer.type === 'buildings') {
+      let bh = layer.type === 'city' ? 0.3 : 0.5;
+      let bw = layer.type === 'city' ? 80 : 50;
+      ctx.fillStyle = layer.type === 'city' ? 'rgba(20,30,50,0.6)' : 'rgba(30,40,60,0.5)';
+      for (let i = 0; i < 20; i++) {
+        let bx = ((i*bw*1.5 + ox)%(W+bw*20)+W+bw*20)%(W+bw*20) - bw*2;
+        let by = H - (i%5+2)*30*bh;
+        ctx.fillRect(bx, by, bw-5, H-by);
+        // Windows
+        if (layer.type === 'buildings') {
+          ctx.fillStyle = 'rgba(255,200,50,0.15)';
+          for (let wy = by+8; wy < H-20; wy += 18) {
+            for (let wx = bx+6; wx < bx+bw-12; wx += 12) {
+              if (Math.random()>0.3) ctx.fillRect(wx, wy, 5, 7);
+            }
+          }
+          ctx.fillStyle = 'rgba(30,40,60,0.5)';
+        }
+      }
+    }
+    if (layer.type === 'gears') {
+      ctx.strokeStyle = 'rgba(80,80,80,0.2)'; ctx.lineWidth = 3;
+      for (let i = 0; i < 5; i++) {
+        let gx = ((i*200+ox)%(W+800)+W+800)%(W+800) - 100;
+        ctx.beginPath(); ctx.arc(gx, 100+i*80, 40+i*10, 0, Math.PI*2); ctx.stroke();
+      }
+    }
+    if (layer.type === 'lava_bg') {
+      // Lava glow at bottom
+      let lavaGrad = ctx.createLinearGradient(0, H-80, 0, H);
+      lavaGrad.addColorStop(0, 'rgba(200,50,0,0)');
+      lavaGrad.addColorStop(1, 'rgba(255,80,0,0.3)');
+      ctx.fillStyle = lavaGrad; ctx.fillRect(0, H-80, W, 80);
+    }
+    ctx.restore();
+  }
+}
+
+function drawPlatforms() {
+  for (let p of platforms) {
+    if (p.fallState === 2) continue;
+    let x = p.x - camera.x, y = p.y - camera.y;
+    if (x + p.w < -50 || x > W + 50) continue;
+
+    if (p.wall) {
+      ctx.fillStyle = '#444';
+      ctx.fillRect(x, y, p.w, p.h);
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+      // Brick pattern
+      for (let by = 0; by < p.h; by += 15) {
+        let off = (Math.floor(by/15)%2) * 10;
+        for (let bx = off; bx < p.w; bx += 20) {
+          ctx.strokeRect(x+bx, y+by, 20, 15);
+        }
+      }
+    } else {
+      // Platform top (grass/metal)
+      ctx.fillStyle = p.falling ? (p.shakeTimer > 0 ? '#aa6633' : '#996633') : '#4a6a3a';
+      ctx.fillRect(x, y, p.w, p.h);
+      // Top edge
+      ctx.fillStyle = p.falling ? '#cc8844' : '#5a8a4a';
+      ctx.fillRect(x, y, p.w, 4);
+      // Edge detail
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, p.w, p.h);
+
+      // Warning indicator for falling platforms
+      if (p.falling && !p.stepped) {
+        ctx.fillStyle = 'rgba(255,100,0,0.3)';
+        ctx.fillRect(x, y, p.w, p.h);
+        // Exclamation mark
+        ctx.fillStyle = '#ff6600'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('!', x+p.w/2, y-5);
+      }
+      if (p.falling && p.shakeTimer > 0) {
+        ctx.fillStyle = 'rgba(255,50,0,0.2)';
+        ctx.fillRect(x, y, p.w, p.h);
+      }
+    }
+  }
+}
+
+function drawHazards() {
+  for (let h of hazards) {
+    let x = h.x - camera.x, y = h.y - camera.y;
+
+    if (h.type === 'spikes') {
+      ctx.fillStyle = '#aaa';
+      for (let sx = 0; sx < h.w; sx += 12) {
+        ctx.beginPath();
+        ctx.moveTo(x+sx, y+h.h); ctx.lineTo(x+sx+6, y); ctx.lineTo(x+sx+12, y+h.h);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#cc3333';
+      for (let sx = 0; sx < h.w; sx += 12) {
+        ctx.beginPath();
+        ctx.moveTo(x+sx+3, y+h.h*0.4); ctx.lineTo(x+sx+6, y); ctx.lineTo(x+sx+9, y+h.h*0.4);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    if (h.type === 'lava') {
+      // Lava pool
+      ctx.fillStyle = '#cc3300';
+      ctx.fillRect(x, y, h.w, h.h);
+      // Animated surface
+      ctx.fillStyle = '#ff6600';
+      for (let lx = 0; lx < h.w; lx += 20) {
+        let ly = Math.sin((lx + levelTime * 2) * 0.05) * 3;
+        ctx.beginPath();
+        ctx.arc(x + lx + 10, y + ly, 8, Math.PI, 0); ctx.fill();
+      }
+      ctx.fillStyle = '#ffaa00';
+      for (let lx = 10; lx < h.w; lx += 30) {
+        let ly = Math.sin((lx + levelTime * 3) * 0.04) * 2;
+        ctx.beginPath();
+        ctx.arc(x + lx, y - 2 + ly, 4, Math.PI, 0); ctx.fill();
+      }
+      // Glow
+      ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 15;
+      ctx.fillStyle = 'rgba(255,100,0,0.1)'; ctx.fillRect(x, y-10, h.w, 10);
+      ctx.shadowBlur = 0;
+    }
+    if (h.type === 'saw') {
+      let sr = h.r || 20;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(levelTime * 0.08);
+      // Blade
+      ctx.fillStyle = '#999';
+      ctx.beginPath(); ctx.arc(0, 0, sr, 0, Math.PI*2); ctx.fill();
+      // Teeth
+      ctx.fillStyle = '#bbb';
+      for (let t = 0; t < 8; t++) {
+        let a = t * Math.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*sr*0.7, Math.sin(a)*sr*0.7);
+        ctx.lineTo(Math.cos(a-0.2)*sr*1.1, Math.sin(a-0.2)*sr*1.1);
+        ctx.lineTo(Math.cos(a+0.2)*sr*1.1, Math.sin(a+0.2)*sr*1.1);
+        ctx.closePath(); ctx.fill();
+      }
+      // Center
+      ctx.fillStyle = '#666'; ctx.beginPath(); ctx.arc(0,0,sr*0.3,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(0,0,sr*0.15,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    if (h.type === 'crusher') {
+      let cy = h.crushY - camera.y;
+      ctx.fillStyle = '#666';
+      ctx.fillRect(x, 0, h.w, cy);
+      // Crusher face
+      ctx.fillStyle = '#888';
+      ctx.fillRect(x, cy, h.w, h.h);
+      // Teeth on bottom
+      ctx.fillStyle = '#aaa';
+      for (let cx2 = 0; cx2 < h.w; cx2 += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x+cx2, cy+h.h); ctx.lineTo(x+cx2+5, cy+h.h+8); ctx.lineTo(x+cx2+10, cy+h.h);
+        ctx.closePath(); ctx.fill();
+      }
+      // Warning stripes
+      ctx.fillStyle = '#ffaa00';
+      for (let sy = 0; sy < h.h; sy += 12) {
+        ctx.fillRect(x+2, cy+sy, h.w-4, 4);
+      }
+    }
+    if (h.type === 'laser') {
+      let cycle = h.laserCycle || 120;
+      let onTime = h.laserOn || 60;
+      let isOn = h.timer % cycle < onTime;
+      let warning = h.timer % cycle > cycle - 30;
+
+      // Emitter
+      ctx.fillStyle = isOn ? '#ff0000' : '#660000';
+      ctx.fillRect(x-3, y-5, (h.w||10)+6, 10);
+
+      if (isOn) {
+        // Laser beam
+        let len = h.laserLen || 300;
+        ctx.fillStyle = 'rgba(255,0,0,0.8)';
+        ctx.fillRect(x, y, h.w||10, len);
+        ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 20;
+        ctx.fillStyle = 'rgba(255,100,100,0.4)';
+        ctx.fillRect(x-5, y, (h.w||10)+10, len);
+        ctx.shadowBlur = 0;
+        // Core
+        ctx.fillStyle = 'rgba(255,200,200,0.9)';
+        ctx.fillRect(x+2, y, (h.w||10)-4, len);
+      } else if (warning) {
+        // Warning flicker
+        if (Math.floor(h.timer/4) % 2 === 0) {
+          ctx.fillStyle = 'rgba(255,0,0,0.2)';
+          ctx.fillRect(x, y, h.w||10, h.laserLen||300);
+        }
+      }
+    }
+  }
+}
+
+function drawCoins() {
+  for (let c of coins) {
+    if (c.collected) continue;
+    let x = c.x - camera.x, y = c.y + Math.sin(c.bobTimer)*4 - camera.y;
+    // Glow
+    ctx.fillStyle = 'rgba(255,215,0,0.2)';
+    ctx.beginPath(); ctx.arc(x, y, c.r+5, 0, Math.PI*2); ctx.fill();
+    // Coin
+    ctx.fillStyle = '#FFD700';
+    ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(x, y, c.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // Shine
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.arc(x-3, y-3, c.r*0.4, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawGoal() {
+  let x = goal.x - camera.x, y = goal.y - camera.y;
+  // Flag pole
+  ctx.fillStyle = '#888';
+  ctx.fillRect(x+goal.w/2-2, y-20, 4, goal.h+20);
+  // Flag
+  let wave = Math.sin(levelTime*0.08)*3;
+  ctx.fillStyle = '#44ff66';
+  ctx.beginPath();
+  ctx.moveTo(x+goal.w/2+2, y-15);
+  ctx.lineTo(x+goal.w/2+25+wave, y-8);
+  ctx.lineTo(x+goal.w/2+2, y);
+  ctx.closePath(); ctx.fill();
+  // Glow
+  ctx.fillStyle = `rgba(68,255,102,${0.15+Math.sin(levelTime*0.05)*0.1})`;
+  ctx.beginPath(); ctx.arc(x+goal.w/2, y+goal.h/2, 30, 0, Math.PI*2); ctx.fill();
+}
+
+function drawPlayer() {
+  if (player.dead) return;
+  let x = player.x - camera.x, y = player.y - camera.y;
+
+  ctx.save();
+  ctx.translate(x + player.w/2, y + player.h/2);
+  if (player.facing === -1) ctx.scale(-1, 1);
+
+  if (player.sliding) {
+    // Sliding pose
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.ellipse(0, 2, 18, 10, 0, 0, Math.PI*2); ctx.fill();
+    // Head
+    ctx.fillStyle = '#4a3528';
+    ctx.beginPath(); ctx.arc(-6, -4, 8, 0, Math.PI*2); ctx.fill();
+  } else {
+    // Body
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(-8, -8, 16, 22);
+
+    // Head
+    ctx.fillStyle = '#4a3528';
+    ctx.beginPath(); ctx.arc(0, -14, 10, 0, Math.PI*2); ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(3, -16, 3, 3.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(4, -16, 1.8, 0, Math.PI*2); ctx.fill();
+
+    // Mouth
+    if (player.onGround) {
+      ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(2, -11, 3, 0, Math.PI); ctx.stroke();
+    }
+
+    // Hair
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(0, -18, 10, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(-2, -19, 8, Math.PI+0.3, -0.3); ctx.fill();
+
+    // Legs
+    let legAnim = player.onGround ? Math.sin(player.animTimer * 0.3) * (Math.abs(player.vx) > 0.5 ? 8 : 0) : -3;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-7, 14, 6, 10 + legAnim * 0.3);
+    ctx.fillRect(1, 14, 6, 10 - legAnim * 0.3);
+
+    // Shoes
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(-8, 22 + legAnim * 0.3, 8, 4);
+    ctx.fillRect(0, 22 - legAnim * 0.3, 8, 4);
+
+    // Arms
+    let armAnim = player.onGround ? -legAnim : 5;
+    ctx.fillStyle = '#4a3528';
+    ctx.save();
+    ctx.translate(-8, -4);
+    ctx.rotate(armAnim * 0.04);
+    ctx.fillRect(-3, 0, 4, 14);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(8, -4);
+    ctx.rotate(-armAnim * 0.04);
+    ctx.fillRect(-1, 0, 4, 14);
+    ctx.restore();
+
+    // Wall slide effect
+    if (player.wallSliding) {
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc((Math.random()-0.5)*10, 10+i*6, 2, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    // Double jump indicator
+    if (!player.onGround && !player.doubleJump && player.hasDoubleJump) {
+      ctx.strokeStyle = 'rgba(68,221,255,0.5)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, player.h/2 + 5, 8, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+
+  // Invulnerability flash after respawn would go here
+}
+
+function drawParticles() {
+  for (let p of particles) {
+    let a = p.life / p.maxLife;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x - camera.x, p.y - camera.y, p.r * a, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (let ft of floatingTexts) {
+    let a = ft.life / ft.maxLife;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+    ctx.fillText(ft.text, ft.x - camera.x, ft.y - camera.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  // Level & time
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(10, 10, 180, 36);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Segoe UI'; ctx.textAlign = 'left';
+  ctx.fillText('Level ' + currentLevel, 20, 32);
+  ctx.fillStyle = '#aaa'; ctx.font = '14px Segoe UI';
+  ctx.fillText((levelTime/60).toFixed(1) + 's', 100, 32);
+
+  // Coins collected
+  let total = coins.length, got = coins.filter(c=>c.collected).length;
+  ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px Segoe UI';
+  ctx.fillText(got + '/' + total, 155, 32);
+
+  // Deaths
+  if (deathCount > 0) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(10, 50, 100, 24);
+    ctx.fillStyle = '#ff6666'; ctx.font = '13px Segoe UI';
+    ctx.fillText('Deaths: ' + deathCount, 20, 67);
+  }
+}
+
+// ============= MAIN LOOP =============
+function loop() {
+  if (gameRunning) {
+    levelTime++;
+    updatePlayer();
+    updatePlatforms();
+    updateHazards();
+    checkHazards();
+    checkCoins();
+    checkGoal();
+    updateCamera();
+  }
+  updateParticles();
+
+  // Draw
+  drawBackground();
+  ctx.save();
+  drawPlatforms();
+  drawHazards();
+  drawCoins();
+  drawGoal();
+  drawPlayer();
+  drawParticles();
+  ctx.restore();
+  drawHUD();
+
+  requestAnimationFrame(loop);
+}
+
+// Init
+buildLevelSelect();
+updateCoinDisplays();
+function updateCoinDisplays() {}
+</script>
+</body>
+</html>
