@@ -107,268 +107,407 @@ function createPlayer(x, y) {
 // ============= LEVELS =============
 const LEVELS = [];
 
-// Level 1: The Basics - simple jumps
+// Level 1: Not So Easy - spikes, saws, tight jumps from the start
 LEVELS[1] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 300, h: 40 },
-    { x: 350, y: H-40, w: 120, h: 40 },
-    { x: 520, y: H-80, w: 120, h: 80 },
-    { x: 700, y: H-120, w: 100, h: 120 },
-    { x: 860, y: H-80, w: 140, h: 80 },
-    { x: 1060, y: H-40, w: 200, h: 40 },
-    { x: 1320, y: H-80, w: 100, h: 80 },
-    { x: 1480, y: H-120, w: 100, h: 120 },
-    { x: 1640, y: H-80, w: 120, h: 80 },
-    { x: 1820, y: H-40, w: 300, h: 40 },
+    { x: 0, y: H-40, w: 150, h: 40 },
+    { x: 220, y: H-60, w: 60, h: 20 },
+    { x: 350, y: H-100, w: 50, h: 20 },
+    { x: 480, y: H-60, w: 50, h: 20 },
+    { x: 600, y: H-40, w: 80, h: 40 },
+    { x: 760, y: H-90, w: 50, h: 20 },
+    { x: 890, y: H-140, w: 50, h: 20 },
+    { x: 1020, y: H-90, w: 60, h: 20 },
+    { x: 1160, y: H-40, w: 80, h: 40 },
+    { x: 1320, y: H-100, w: 50, h: 20, moving: true, moveX: 40, speed: 1.5 },
+    { x: 1480, y: H-150, w: 50, h: 20 },
+    { x: 1620, y: H-80, w: 60, h: 20 },
+    { x: 1780, y: H-40, w: 150, h: 40 },
   ];
   let haz = [
-    { x: 300, y: H-20, w: 50, h: 20, type: 'spikes' },
-    { x: 1260, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 150, y: H-20, w: 70, h: 20, type: 'spikes' },
+    { x: 430, y: H-80, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 680, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 950, y: H-60, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1240, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 1550, y: H-110, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 1700, y: H-20, w: 80, h: 20, type: 'spikes' },
   ];
   let cns = [
-    { x: 380, y: H-80, r: 10 }, { x: 550, y: H-120, r: 10 },
-    { x: 730, y: H-160, r: 10 }, { x: 1350, y: H-120, r: 10 },
-    { x: 1510, y: H-160, r: 10 }, { x: 1680, y: H-120, r: 10 },
+    { x: 250, y: H-100, r: 10 }, { x: 380, y: H-140, r: 10 },
+    { x: 790, y: H-130, r: 10 }, { x: 1350, y: H-140, r: 10 },
+    { x: 1510, y: H-190, r: 10 }, { x: 1650, y: H-120, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 2020, y: H-90, w: 40, h: 50 }, bg: 'city' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1850, y: H-90, w: 40, h: 50 }, bg: 'city' };
 };
 
-// Level 2: Moving platforms & more spikes
+// Level 2: Moving Mayhem - fast moving platforms, spikes everywhere
 LEVELS[2] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 200, h: 40 },
-    { x: 300, y: H-100, w: 100, h: 20, moving: true, moveX: 80, speed: 1.5 },
-    { x: 500, y: H-160, w: 100, h: 20, moving: true, moveY: 60, speed: 1.2 },
-    { x: 700, y: H-100, w: 80, h: 20 },
-    { x: 850, y: H-160, w: 80, h: 20, moving: true, moveX: 60, speed: 2 },
-    { x: 1050, y: H-100, w: 150, h: 40 },
-    { x: 1260, y: H-140, w: 80, h: 20, moving: true, moveY: 80, speed: 1 },
-    { x: 1440, y: H-100, w: 100, h: 20 },
-    { x: 1600, y: H-60, w: 80, h: 20, moving: true, moveX: 100, speed: 1.8 },
-    { x: 1800, y: H-40, w: 250, h: 40 },
+    { x: 0, y: H-40, w: 120, h: 40 },
+    { x: 200, y: H-100, w: 55, h: 20, moving: true, moveX: 60, speed: 2.5 },
+    { x: 380, y: H-160, w: 55, h: 20, moving: true, moveY: 70, speed: 2 },
+    { x: 540, y: H-100, w: 50, h: 20 },
+    { x: 680, y: H-160, w: 55, h: 20, moving: true, moveX: 50, speed: 3 },
+    { x: 860, y: H-100, w: 80, h: 20 },
+    { x: 1020, y: H-150, w: 50, h: 20, moving: true, moveY: 80, speed: 1.8 },
+    { x: 1180, y: H-100, w: 50, h: 20, falling: true, fallDelay: 20 },
+    { x: 1320, y: H-160, w: 55, h: 20, moving: true, moveX: 70, speed: 2.5 },
+    { x: 1500, y: H-40, w: 120, h: 40 },
   ];
   let haz = [
-    { x: 200, y: H-20, w: 100, h: 20, type: 'spikes' },
-    { x: 1050, y: H-60, w: 150, h: 15, type: 'spikes' },
+    { x: 120, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 320, y: H-120, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 600, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 780, y: H-130, w: 0, h: 0, type: 'saw', r: 20, moveY: 40, speed: 1.5 },
+    { x: 940, y: H-60, w: 80, h: 15, type: 'spikes' },
+    { x: 1100, y: H-60, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1420, y: H-20, w: 80, h: 20, type: 'spikes' },
   ];
   let cns = [
-    { x: 350, y: H-140, r: 10 }, { x: 550, y: H-200, r: 10 },
-    { x: 730, y: H-140, r: 10 }, { x: 890, y: H-200, r: 10 },
-    { x: 1300, y: H-200, r: 10 }, { x: 1640, y: H-100, r: 10 },
+    { x: 240, y: H-140, r: 10 }, { x: 420, y: H-210, r: 10 },
+    { x: 720, y: H-200, r: 10 }, { x: 1060, y: H-200, r: 10 },
+    { x: 1360, y: H-200, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1920, y: H-90, w: 40, h: 50 }, bg: 'night' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1540, y: H-90, w: 40, h: 50 }, bg: 'night' };
 };
 
-// Level 3: Saw blades & tight jumps
+// Level 3: Saw Gauntlet - saws everywhere, tiny platforms
 LEVELS[3] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 180, h: 40 },
-    { x: 240, y: H-80, w: 60, h: 20 },
-    { x: 380, y: H-130, w: 60, h: 20 },
-    { x: 500, y: H-80, w: 60, h: 20 },
-    { x: 620, y: H-40, w: 120, h: 40 },
-    { x: 820, y: H-80, w: 60, h: 20 },
-    { x: 960, y: H-140, w: 60, h: 20 },
-    { x: 1100, y: H-200, w: 80, h: 20 },
-    { x: 1260, y: H-140, w: 60, h: 20 },
-    { x: 1380, y: H-80, w: 120, h: 40 },
-    { x: 1560, y: H-120, w: 80, h: 20, moving: true, moveX: 60, speed: 2 },
-    { x: 1740, y: H-40, w: 250, h: 40 },
+    { x: 0, y: H-40, w: 100, h: 40 },
+    { x: 180, y: H-80, w: 40, h: 20 },
+    { x: 310, y: H-130, w: 40, h: 20 },
+    { x: 440, y: H-80, w: 40, h: 20 },
+    { x: 560, y: H-40, w: 60, h: 40 },
+    { x: 700, y: H-100, w: 40, h: 20 },
+    { x: 820, y: H-160, w: 40, h: 20 },
+    { x: 940, y: H-220, w: 50, h: 20 },
+    { x: 1080, y: H-160, w: 40, h: 20 },
+    { x: 1200, y: H-100, w: 40, h: 20 },
+    { x: 1320, y: H-160, w: 40, h: 20, moving: true, moveX: 40, speed: 2.5 },
+    { x: 1480, y: H-100, w: 50, h: 20, falling: true, fallDelay: 15 },
+    { x: 1600, y: H-40, w: 120, h: 40 },
   ];
   let haz = [
-    { x: 180, y: H-20, w: 60, h: 20, type: 'spikes' },
-    { x: 450, y: H-100, w: 0, h: 0, type: 'saw', r: 20 },
-    { x: 740, y: H-20, w: 80, h: 20, type: 'spikes' },
-    { x: 900, y: H-60, w: 0, h: 0, type: 'saw', r: 20 },
-    { x: 1200, y: H-160, w: 0, h: 0, type: 'saw', r: 18 },
-    { x: 1500, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 100, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 250, y: H-100, w: 0, h: 0, type: 'saw', r: 22 },
+    { x: 370, y: H-50, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 500, y: H-100, w: 0, h: 0, type: 'saw', r: 20, moveY: 50, speed: 1.5 },
+    { x: 620, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 760, y: H-60, w: 0, h: 0, type: 'saw', r: 22, moveY: 40, speed: 2 },
+    { x: 880, y: H-130, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1010, y: H-190, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1150, y: H-130, w: 0, h: 0, type: 'saw', r: 20, moveX: 30, speed: 2 },
+    { x: 1400, y: H-130, w: 0, h: 0, type: 'saw', r: 22 },
+    { x: 1540, y: H-20, w: 60, h: 20, type: 'spikes' },
   ];
   let cns = [
-    { x: 270, y: H-120, r: 10 }, { x: 410, y: H-170, r: 10 },
-    { x: 990, y: H-180, r: 10 }, { x: 1130, y: H-240, r: 10 },
-    { x: 1600, y: H-160, r: 10 },
+    { x: 200, y: H-120, r: 10 }, { x: 330, y: H-170, r: 10 },
+    { x: 850, y: H-200, r: 10 }, { x: 970, y: H-260, r: 10 },
+    { x: 1360, y: H-200, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1880, y: H-90, w: 40, h: 50 }, bg: 'factory' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1640, y: H-90, w: 40, h: 50 }, bg: 'factory' };
 };
 
-// Level 4: Crushing walls & falling platforms
+// Level 4: Crusher Chaos - fast crushers, falling floors, saws
 LEVELS[4] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 200, h: 40 },
-    { x: 280, y: H-80, w: 80, h: 20, falling: true, fallDelay: 30 },
-    { x: 420, y: H-130, w: 80, h: 20, falling: true, fallDelay: 30 },
-    { x: 560, y: H-80, w: 100, h: 40 },
-    { x: 740, y: H-40, w: 60, h: 40 },
-    { x: 880, y: H-100, w: 80, h: 20, moving: true, moveY: 50, speed: 1.5 },
-    { x: 1040, y: H-160, w: 80, h: 20, falling: true, fallDelay: 25 },
-    { x: 1180, y: H-100, w: 60, h: 20, falling: true, fallDelay: 25 },
-    { x: 1300, y: H-40, w: 100, h: 40 },
-    { x: 1480, y: H-100, w: 80, h: 20, moving: true, moveX: 70, speed: 2 },
-    { x: 1660, y: H-140, w: 80, h: 20 },
-    { x: 1820, y: H-40, w: 250, h: 40 },
+    { x: 0, y: H-40, w: 100, h: 40 },
+    { x: 180, y: H-80, w: 50, h: 20, falling: true, fallDelay: 18 },
+    { x: 310, y: H-130, w: 50, h: 20, falling: true, fallDelay: 18 },
+    { x: 440, y: H-80, w: 60, h: 20 },
+    { x: 580, y: H-40, w: 50, h: 40 },
+    { x: 720, y: H-80, w: 50, h: 20, moving: true, moveY: 40, speed: 2.5 },
+    { x: 870, y: H-140, w: 50, h: 20, falling: true, fallDelay: 15 },
+    { x: 1010, y: H-80, w: 40, h: 20, falling: true, fallDelay: 12 },
+    { x: 1140, y: H-40, w: 60, h: 40 },
+    { x: 1300, y: H-100, w: 50, h: 20, moving: true, moveX: 50, speed: 3 },
+    { x: 1460, y: H-150, w: 50, h: 20 },
+    { x: 1600, y: H-40, w: 120, h: 40 },
   ];
   let haz = [
-    { x: 200, y: H-20, w: 80, h: 20, type: 'spikes' },
-    { x: 660, y: 80, w: 40, h: 100, type: 'crusher', crushSpeed: 3, crushDelay: 90 },
-    { x: 1150, y: 80, w: 40, h: 100, type: 'crusher', crushSpeed: 4, crushDelay: 70 },
-    { x: 560, y: H-40, w: 0, h: 0, type: 'saw', r: 18, moveY: 80, speed: 1 },
-    { x: 1400, y: H-20, w: 100, h: 20, type: 'spikes' },
-    { x: 1760, y: H-100, w: 0, h: 0, type: 'saw', r: 22 },
+    { x: 100, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 380, y: 60, w: 50, h: 80, type: 'crusher', crushSpeed: 5, crushDelay: 60 },
+    { x: 500, y: H-60, w: 0, h: 0, type: 'saw', r: 20, moveY: 70, speed: 1.5 },
+    { x: 630, y: H-20, w: 90, h: 20, type: 'spikes' },
+    { x: 780, y: 60, w: 50, h: 80, type: 'crusher', crushSpeed: 6, crushDelay: 50 },
+    { x: 950, y: H-60, w: 0, h: 0, type: 'saw', r: 22 },
+    { x: 1060, y: 80, w: 50, h: 80, type: 'crusher', crushSpeed: 7, crushDelay: 45 },
+    { x: 1200, y: H-20, w: 100, h: 20, type: 'spikes' },
+    { x: 1380, y: H-60, w: 0, h: 0, type: 'saw', r: 20, moveY: 50, speed: 2 },
+    { x: 1530, y: H-100, w: 0, h: 0, type: 'saw', r: 24 },
   ];
   let cns = [
-    { x: 310, y: H-120, r: 10 }, { x: 450, y: H-170, r: 10 },
-    { x: 920, y: H-160, r: 10 }, { x: 1080, y: H-200, r: 10 },
-    { x: 1520, y: H-140, r: 10 }, { x: 1700, y: H-180, r: 10 },
+    { x: 210, y: H-120, r: 10 }, { x: 340, y: H-170, r: 10 },
+    { x: 760, y: H-140, r: 10 }, { x: 900, y: H-180, r: 10 },
+    { x: 1340, y: H-140, r: 10 }, { x: 1490, y: H-190, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1960, y: H-90, w: 40, h: 50 }, bg: 'city' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1640, y: H-90, w: 40, h: 50 }, bg: 'city' };
 };
 
-// Level 5: Wall jumps & vertical challenge
+// Level 5: Wall Jump Hell - narrow shafts, saws in walls
 LEVELS[5] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 150, h: 40 },
-    { x: 200, y: H-40, w: 40, h: 200, wall: true },
-    { x: 350, y: H-40, w: 40, h: 200, wall: true },
-    { x: 200, y: H-240, w: 190, h: 20 },
-    { x: 450, y: H-160, w: 80, h: 20 },
-    { x: 580, y: H-40, w: 40, h: 300, wall: true },
-    { x: 720, y: H-40, w: 40, h: 300, wall: true },
-    { x: 580, y: H-340, w: 180, h: 20 },
-    { x: 820, y: H-260, w: 80, h: 20, moving: true, moveX: 80, speed: 1.5 },
-    { x: 1020, y: H-200, w: 100, h: 20 },
-    { x: 1180, y: H-140, w: 80, h: 20, falling: true, fallDelay: 20 },
-    { x: 1320, y: H-200, w: 80, h: 20 },
-    { x: 1460, y: H-260, w: 100, h: 20 },
-    { x: 1620, y: H-40, w: 250, h: 40 },
+    { x: 0, y: H-40, w: 100, h: 40 },
+    { x: 160, y: H-40, w: 30, h: 250, wall: true },
+    { x: 290, y: H-40, w: 30, h: 250, wall: true },
+    { x: 160, y: H-290, w: 160, h: 20 },
+    { x: 380, y: H-200, w: 50, h: 20, falling: true, fallDelay: 15 },
+    { x: 500, y: H-40, w: 30, h: 350, wall: true },
+    { x: 620, y: H-40, w: 30, h: 350, wall: true },
+    { x: 500, y: H-390, w: 150, h: 20 },
+    { x: 710, y: H-300, w: 50, h: 20, moving: true, moveX: 50, speed: 2.5 },
+    { x: 880, y: H-220, w: 50, h: 20 },
+    { x: 1000, y: H-160, w: 40, h: 20, falling: true, fallDelay: 12 },
+    { x: 1120, y: H-220, w: 50, h: 20 },
+    { x: 1260, y: H-300, w: 50, h: 20, moving: true, moveY: 60, speed: 2 },
+    { x: 1400, y: H-40, w: 150, h: 40 },
   ];
   let haz = [
-    { x: 150, y: H-20, w: 50, h: 20, type: 'spikes' },
-    { x: 260, y: H-100, w: 0, h: 0, type: 'saw', r: 16 },
-    { x: 640, y: H-160, w: 0, h: 0, type: 'saw', r: 20 },
-    { x: 1100, y: H-170, w: 0, h: 0, type: 'saw', r: 18 },
-    { x: 1560, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 100, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 220, y: H-120, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 220, y: H-200, w: 0, h: 0, type: 'saw', r: 16, moveY: 30, speed: 2 },
+    { x: 555, y: H-120, w: 0, h: 0, type: 'saw', r: 20, moveY: 60, speed: 1.5 },
+    { x: 555, y: H-260, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 440, y: H-160, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 940, y: H-180, w: 0, h: 0, type: 'saw', r: 20, moveX: 30, speed: 2 },
+    { x: 1060, y: H-120, w: 0, h: 0, type: 'saw', r: 22 },
+    { x: 1180, y: H-260, w: 0, h: 0, type: 'saw', r: 18, moveY: 40, speed: 2.5 },
+    { x: 1340, y: H-20, w: 60, h: 20, type: 'spikes' },
   ];
   let cns = [
-    { x: 280, y: H-180, r: 10 }, { x: 650, y: H-280, r: 10 },
-    { x: 860, y: H-300, r: 10 }, { x: 1060, y: H-240, r: 10 },
-    { x: 1360, y: H-240, r: 10 }, { x: 1500, y: H-300, r: 10 },
+    { x: 225, y: H-160, r: 10 }, { x: 560, y: H-320, r: 10 },
+    { x: 750, y: H-340, r: 10 }, { x: 920, y: H-260, r: 10 },
+    { x: 1160, y: H-260, r: 10 }, { x: 1300, y: H-340, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1760, y: H-90, w: 40, h: 50 }, bg: 'night' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1460, y: H-90, w: 40, h: 50 }, bg: 'night' };
 };
 
-// Level 6: Lava level - fire everywhere
+// Level 6: Lava Nightmare - tiny platforms over lava, everything falls
 LEVELS[6] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 140, h: 40 },
-    { x: 200, y: H-80, w: 60, h: 20 },
-    { x: 320, y: H-130, w: 60, h: 20, moving: true, moveX: 50, speed: 2 },
-    { x: 460, y: H-80, w: 60, h: 20, falling: true, fallDelay: 20 },
-    { x: 580, y: H-130, w: 80, h: 20 },
-    { x: 740, y: H-80, w: 60, h: 20, moving: true, moveY: 40, speed: 1.5 },
-    { x: 880, y: H-140, w: 80, h: 20 },
-    { x: 1020, y: H-80, w: 60, h: 20, falling: true, fallDelay: 18 },
-    { x: 1140, y: H-130, w: 60, h: 20, falling: true, fallDelay: 18 },
-    { x: 1260, y: H-180, w: 80, h: 20 },
-    { x: 1420, y: H-120, w: 60, h: 20, moving: true, moveX: 60, speed: 2.5 },
-    { x: 1580, y: H-80, w: 60, h: 20 },
-    { x: 1720, y: H-40, w: 200, h: 40 },
+    { x: 0, y: H-40, w: 80, h: 40 },
+    { x: 150, y: H-90, w: 40, h: 20, falling: true, fallDelay: 12 },
+    { x: 260, y: H-140, w: 40, h: 20 },
+    { x: 370, y: H-90, w: 40, h: 20, falling: true, fallDelay: 10 },
+    { x: 480, y: H-140, w: 45, h: 20, moving: true, moveX: 40, speed: 3 },
+    { x: 630, y: H-90, w: 40, h: 20, falling: true, fallDelay: 10 },
+    { x: 750, y: H-150, w: 45, h: 20 },
+    { x: 880, y: H-90, w: 40, h: 20, moving: true, moveY: 30, speed: 2.5 },
+    { x: 1000, y: H-150, w: 40, h: 20, falling: true, fallDelay: 8 },
+    { x: 1120, y: H-200, w: 40, h: 20, falling: true, fallDelay: 8 },
+    { x: 1240, y: H-150, w: 45, h: 20, moving: true, moveX: 50, speed: 3 },
+    { x: 1400, y: H-90, w: 40, h: 20, falling: true, fallDelay: 10 },
+    { x: 1520, y: H-40, w: 100, h: 40 },
   ];
   let haz = [
-    { x: 140, y: H-10, w: 1580, h: 20, type: 'lava' },
-    { x: 450, y: H-100, w: 0, h: 0, type: 'saw', r: 18, moveY: 50, speed: 1.2 },
-    { x: 700, y: H-40, w: 0, h: 0, type: 'saw', r: 16 },
-    { x: 1000, y: H-50, w: 0, h: 0, type: 'saw', r: 20 },
-    { x: 1380, y: H-80, w: 0, h: 0, type: 'saw', r: 16, moveY: 40, speed: 1.5 },
+    { x: 80, y: H-10, w: 1440, h: 20, type: 'lava' },
+    { x: 200, y: H-110, w: 0, h: 0, type: 'saw', r: 18, moveY: 30, speed: 2 },
+    { x: 430, y: H-60, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 560, y: H-120, w: 0, h: 0, type: 'saw', r: 20, moveY: 40, speed: 2 },
+    { x: 820, y: H-60, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 940, y: H-120, w: 0, h: 0, type: 'saw', r: 16, moveX: 30, speed: 2.5 },
+    { x: 1060, y: H-170, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1180, y: H-100, w: 0, h: 0, type: 'saw', r: 18, moveY: 35, speed: 2 },
+    { x: 1330, y: H-120, w: 0, h: 0, type: 'saw', r: 22, moveX: 30, speed: 2 },
+    { x: 1470, y: H-60, w: 0, h: 0, type: 'saw', r: 16 },
   ];
   let cns = [
-    { x: 230, y: H-120, r: 10 }, { x: 360, y: H-170, r: 10 },
-    { x: 610, y: H-170, r: 10 }, { x: 920, y: H-180, r: 10 },
-    { x: 1300, y: H-220, r: 10 }, { x: 1460, y: H-160, r: 10 },
+    { x: 170, y: H-130, r: 10 }, { x: 290, y: H-180, r: 10 },
+    { x: 510, y: H-180, r: 10 }, { x: 780, y: H-190, r: 10 },
+    { x: 1150, y: H-240, r: 10 }, { x: 1280, y: H-190, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 1830, y: H-90, w: 40, h: 50 }, bg: 'lava' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 30, y: H-90 }, goal: { x: 1540, y: H-90, w: 40, h: 50 }, bg: 'lava' };
 };
 
-// Level 7: Speed run - lasers & timing
+// Level 7: Laser Death Corridor - rapid lasers, tiny windows
 LEVELS[7] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 160, h: 40 },
-    { x: 220, y: H-40, w: 80, h: 40 },
-    { x: 380, y: H-40, w: 80, h: 40 },
-    { x: 540, y: H-80, w: 100, h: 20, moving: true, moveX: 60, speed: 3 },
-    { x: 740, y: H-40, w: 60, h: 40 },
-    { x: 880, y: H-80, w: 60, h: 20 },
-    { x: 1000, y: H-130, w: 60, h: 20, moving: true, moveY: 60, speed: 2 },
-    { x: 1140, y: H-80, w: 80, h: 20, falling: true, fallDelay: 15 },
-    { x: 1280, y: H-130, w: 80, h: 20, falling: true, fallDelay: 15 },
-    { x: 1420, y: H-40, w: 80, h: 40 },
-    { x: 1560, y: H-100, w: 60, h: 20, moving: true, moveX: 80, speed: 2.5 },
-    { x: 1740, y: H-140, w: 80, h: 20 },
-    { x: 1900, y: H-40, w: 200, h: 40 },
+    { x: 0, y: H-40, w: 80, h: 40 },
+    { x: 160, y: H-40, w: 50, h: 40 },
+    { x: 300, y: H-80, w: 45, h: 20 },
+    { x: 440, y: H-40, w: 50, h: 40 },
+    { x: 580, y: H-100, w: 45, h: 20, moving: true, moveX: 40, speed: 3 },
+    { x: 740, y: H-40, w: 40, h: 40 },
+    { x: 860, y: H-90, w: 40, h: 20, falling: true, fallDelay: 12 },
+    { x: 980, y: H-140, w: 45, h: 20 },
+    { x: 1100, y: H-90, w: 40, h: 20, moving: true, moveY: 50, speed: 2.5 },
+    { x: 1240, y: H-140, w: 40, h: 20, falling: true, fallDelay: 10 },
+    { x: 1360, y: H-40, w: 50, h: 40 },
+    { x: 1500, y: H-100, w: 45, h: 20, moving: true, moveX: 60, speed: 3 },
+    { x: 1660, y: H-40, w: 120, h: 40 },
   ];
   let haz = [
-    { x: 160, y: H-20, w: 60, h: 20, type: 'spikes' },
-    { x: 300, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 120, laserOn: 60 },
-    { x: 460, y: H-20, w: 80, h: 20, type: 'spikes' },
-    { x: 680, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 100, laserOn: 50 },
-    { x: 800, y: H-20, w: 80, h: 20, type: 'spikes' },
-    { x: 1080, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 90, laserOn: 45 },
-    { x: 1500, y: H-20, w: 60, h: 20, type: 'spikes' },
-    { x: 1650, y: H-100, w: 0, h: 0, type: 'saw', r: 22, moveY: 60, speed: 2 },
-    { x: 1850, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 80, laserOn: 40 },
+    { x: 80, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 110, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 70, laserOn: 40 },
+    { x: 250, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 60, laserOn: 30 },
+    { x: 390, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 65, laserOn: 35 },
+    { x: 520, y: H-60, w: 0, h: 0, type: 'saw', r: 18, moveY: 40, speed: 2 },
+    { x: 680, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 55, laserOn: 30 },
+    { x: 800, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 920, y: 60, w: 10, h: 0, type: 'laser', laserLen: 380, laserCycle: 60, laserOn: 28 },
+    { x: 1050, y: H-50, w: 0, h: 0, type: 'saw', r: 20, moveY: 50, speed: 2 },
+    { x: 1180, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 55, laserOn: 25 },
+    { x: 1300, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 1440, y: 60, w: 10, h: 0, type: 'laser', laserLen: 380, laserCycle: 50, laserOn: 25 },
+    { x: 1600, y: H-60, w: 0, h: 0, type: 'saw', r: 22, moveY: 40, speed: 2.5 },
   ];
   let cns = [
-    { x: 250, y: H-80, r: 10 }, { x: 580, y: H-120, r: 10 },
-    { x: 910, y: H-120, r: 10 }, { x: 1040, y: H-180, r: 10 },
-    { x: 1600, y: H-140, r: 10 }, { x: 1780, y: H-180, r: 10 },
+    { x: 190, y: H-80, r: 10 }, { x: 330, y: H-120, r: 10 },
+    { x: 620, y: H-140, r: 10 }, { x: 900, y: H-130, r: 10 },
+    { x: 1140, y: H-140, r: 10 }, { x: 1540, y: H-140, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 2000, y: H-90, w: 40, h: 50 }, bg: 'factory' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 30, y: H-90 }, goal: { x: 1700, y: H-90, w: 40, h: 50 }, bg: 'factory' };
 };
 
-// Level 8: The Gauntlet - everything combined
+// Level 8: The Gauntlet - every hazard type, no mercy
 LEVELS[8] = function() {
   let plats = [
-    { x: 0, y: H-40, w: 120, h: 40 },
-    { x: 180, y: H-90, w: 60, h: 20, falling: true, fallDelay: 18 },
-    { x: 300, y: H-140, w: 60, h: 20, moving: true, moveX: 50, speed: 2.5 },
-    { x: 440, y: H-40, w: 40, h: 200, wall: true },
-    { x: 560, y: H-40, w: 40, h: 200, wall: true },
-    { x: 440, y: H-240, w: 160, h: 20 },
-    { x: 660, y: H-160, w: 60, h: 20, falling: true, fallDelay: 15 },
-    { x: 780, y: H-100, w: 60, h: 20, moving: true, moveY: 50, speed: 2 },
-    { x: 920, y: H-160, w: 80, h: 20 },
-    { x: 1080, y: H-100, w: 60, h: 20, falling: true, fallDelay: 12 },
-    { x: 1200, y: H-160, w: 60, h: 20, moving: true, moveX: 60, speed: 3 },
-    { x: 1380, y: H-220, w: 80, h: 20 },
-    { x: 1520, y: H-160, w: 60, h: 20, falling: true, fallDelay: 12 },
-    { x: 1640, y: H-100, w: 60, h: 20, moving: true, moveY: 80, speed: 2 },
-    { x: 1780, y: H-40, w: 40, h: 250, wall: true },
-    { x: 1900, y: H-40, w: 40, h: 250, wall: true },
-    { x: 1780, y: H-290, w: 160, h: 20 },
-    { x: 2000, y: H-200, w: 80, h: 20 },
-    { x: 2140, y: H-40, w: 200, h: 40 },
+    { x: 0, y: H-40, w: 80, h: 40 },
+    { x: 150, y: H-90, w: 40, h: 20, falling: true, fallDelay: 12 },
+    { x: 270, y: H-140, w: 40, h: 20, moving: true, moveX: 40, speed: 3 },
+    { x: 400, y: H-40, w: 30, h: 220, wall: true },
+    { x: 510, y: H-40, w: 30, h: 220, wall: true },
+    { x: 400, y: H-260, w: 140, h: 20 },
+    { x: 600, y: H-180, w: 40, h: 20, falling: true, fallDelay: 10 },
+    { x: 720, y: H-100, w: 40, h: 20, moving: true, moveY: 60, speed: 2.5 },
+    { x: 860, y: H-160, w: 50, h: 20 },
+    { x: 990, y: H-100, w: 40, h: 20, falling: true, fallDelay: 8 },
+    { x: 1110, y: H-170, w: 40, h: 20, moving: true, moveX: 50, speed: 3.5 },
+    { x: 1280, y: H-230, w: 50, h: 20 },
+    { x: 1410, y: H-170, w: 40, h: 20, falling: true, fallDelay: 8 },
+    { x: 1530, y: H-100, w: 40, h: 20, moving: true, moveY: 70, speed: 2.5 },
+    { x: 1660, y: H-40, w: 30, h: 280, wall: true },
+    { x: 1770, y: H-40, w: 30, h: 280, wall: true },
+    { x: 1660, y: H-320, w: 140, h: 20 },
+    { x: 1860, y: H-220, w: 50, h: 20, falling: true, fallDelay: 10 },
+    { x: 1980, y: H-40, w: 120, h: 40 },
   ];
   let haz = [
-    { x: 120, y: H-10, w: 320, h: 20, type: 'lava' },
-    { x: 490, y: H-120, w: 0, h: 0, type: 'saw', r: 18 },
-    { x: 600, y: H-20, w: 180, h: 20, type: 'spikes' },
-    { x: 850, y: 100, w: 10, h: 0, type: 'laser', laserLen: 300, laserCycle: 90, laserOn: 45 },
-    { x: 1000, y: H-60, w: 0, h: 0, type: 'saw', r: 20, moveY: 60, speed: 1.5 },
-    { x: 1300, y: 80, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 80, laserOn: 35 },
-    { x: 1450, y: H-180, w: 0, h: 0, type: 'saw', r: 16 },
-    { x: 1700, y: H-20, w: 80, h: 20, type: 'spikes' },
-    { x: 1840, y: H-140, w: 0, h: 0, type: 'saw', r: 18, moveY: 50, speed: 2 },
-    { x: 2100, y: H-20, w: 40, h: 20, type: 'spikes' },
+    { x: 80, y: H-10, w: 320, h: 20, type: 'lava' },
+    { x: 450, y: H-130, w: 0, h: 0, type: 'saw', r: 20, moveY: 40, speed: 2 },
+    { x: 540, y: H-20, w: 180, h: 20, type: 'spikes' },
+    { x: 660, y: 60, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 60, laserOn: 30 },
+    { x: 810, y: H-60, w: 0, h: 0, type: 'saw', r: 22, moveY: 50, speed: 2 },
+    { x: 930, y: 60, w: 50, h: 80, type: 'crusher', crushSpeed: 7, crushDelay: 40 },
+    { x: 1050, y: H-120, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1200, y: 60, w: 10, h: 0, type: 'laser', laserLen: 380, laserCycle: 50, laserOn: 25 },
+    { x: 1350, y: H-200, w: 0, h: 0, type: 'saw', r: 18, moveX: 30, speed: 2.5 },
+    { x: 1580, y: H-20, w: 80, h: 20, type: 'spikes' },
+    { x: 1710, y: H-160, w: 0, h: 0, type: 'saw', r: 20, moveY: 60, speed: 2.5 },
+    { x: 1920, y: H-20, w: 60, h: 20, type: 'spikes' },
+    { x: 1500, y: H-10, w: 160, h: 20, type: 'lava' },
   ];
   let cns = [
-    { x: 210, y: H-130, r: 10 }, { x: 340, y: H-180, r: 10 },
-    { x: 500, y: H-200, r: 10 }, { x: 820, y: H-140, r: 10 },
-    { x: 960, y: H-200, r: 10 }, { x: 1240, y: H-200, r: 10 },
-    { x: 1420, y: H-260, r: 10 }, { x: 1840, y: H-240, r: 10 },
+    { x: 180, y: H-130, r: 10 }, { x: 300, y: H-180, r: 10 },
+    { x: 460, y: H-220, r: 10 }, { x: 760, y: H-140, r: 10 },
+    { x: 1150, y: H-210, r: 10 }, { x: 1320, y: H-270, r: 10 },
+    { x: 1710, y: H-270, r: 10 }, { x: 1900, y: H-260, r: 10 },
   ];
-  return { platforms: plats, hazards: haz, coins: cns, start: { x: 50, y: H-90 }, goal: { x: 2240, y: H-90, w: 40, h: 50 }, bg: 'lava' };
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 30, y: H-90 }, goal: { x: 2020, y: H-90, w: 40, h: 50 }, bg: 'lava' };
 };
 
-const TOTAL_LEVELS = 8;
+// Level 9: IMPOSSIBLE - insane precision required
+LEVELS[9] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 60, h: 40 },
+    { x: 140, y: H-100, w: 35, h: 15, falling: true, fallDelay: 8 },
+    { x: 260, y: H-160, w: 35, h: 15, moving: true, moveX: 30, speed: 3.5 },
+    { x: 380, y: H-100, w: 35, h: 15, falling: true, fallDelay: 6 },
+    { x: 480, y: H-40, w: 25, h: 280, wall: true },
+    { x: 580, y: H-40, w: 25, h: 280, wall: true },
+    { x: 480, y: H-320, w: 125, h: 15 },
+    { x: 660, y: H-240, w: 35, h: 15, falling: true, fallDelay: 8 },
+    { x: 760, y: H-160, w: 35, h: 15, moving: true, moveY: 60, speed: 3 },
+    { x: 870, y: H-240, w: 35, h: 15, falling: true, fallDelay: 6 },
+    { x: 970, y: H-300, w: 40, h: 15 },
+    { x: 1100, y: H-240, w: 35, h: 15, moving: true, moveX: 40, speed: 4 },
+    { x: 1240, y: H-180, w: 35, h: 15, falling: true, fallDelay: 6 },
+    { x: 1350, y: H-120, w: 35, h: 15, moving: true, moveY: 40, speed: 3.5 },
+    { x: 1460, y: H-40, w: 100, h: 40 },
+  ];
+  let haz = [
+    { x: 60, y: H-10, w: 1400, h: 20, type: 'lava' },
+    { x: 80, y: 60, w: 10, h: 0, type: 'laser', laserLen: 380, laserCycle: 50, laserOn: 25 },
+    { x: 200, y: H-130, w: 0, h: 0, type: 'saw', r: 20, moveY: 30, speed: 3 },
+    { x: 330, y: H-60, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 530, y: H-160, w: 0, h: 0, type: 'saw', r: 20, moveY: 50, speed: 2.5 },
+    { x: 530, y: H-260, w: 0, h: 0, type: 'saw', r: 16 },
+    { x: 620, y: 60, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 45, laserOn: 22 },
+    { x: 820, y: H-200, w: 0, h: 0, type: 'saw', r: 22, moveX: 25, speed: 3 },
+    { x: 930, y: 50, w: 40, h: 70, type: 'crusher', crushSpeed: 8, crushDelay: 35 },
+    { x: 1040, y: H-150, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1170, y: 60, w: 10, h: 0, type: 'laser', laserLen: 380, laserCycle: 40, laserOn: 20 },
+    { x: 1300, y: H-150, w: 0, h: 0, type: 'saw', r: 22, moveY: 40, speed: 3 },
+    { x: 1410, y: H-70, w: 0, h: 0, type: 'saw', r: 18 },
+  ];
+  let cns = [
+    { x: 160, y: H-140, r: 10 }, { x: 290, y: H-200, r: 10 },
+    { x: 540, y: H-280, r: 10 }, { x: 800, y: H-200, r: 10 },
+    { x: 1000, y: H-340, r: 10 }, { x: 1140, y: H-280, r: 10 },
+    { x: 1380, y: H-160, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 20, y: H-90 }, goal: { x: 1480, y: H-90, w: 40, h: 50 }, bg: 'night' };
+};
+
+// Level 10: NIGHTMARE - the hardest level ever
+LEVELS[10] = function() {
+  let plats = [
+    { x: 0, y: H-40, w: 50, h: 40 },
+    { x: 120, y: H-100, w: 30, h: 12, falling: true, fallDelay: 6 },
+    { x: 230, y: H-160, w: 30, h: 12, moving: true, moveX: 25, speed: 4 },
+    { x: 340, y: H-100, w: 30, h: 12, falling: true, fallDelay: 5 },
+    { x: 430, y: H-40, w: 20, h: 320, wall: true },
+    { x: 520, y: H-40, w: 20, h: 320, wall: true },
+    { x: 430, y: H-360, w: 110, h: 12 },
+    { x: 590, y: H-280, w: 30, h: 12, falling: true, fallDelay: 5 },
+    { x: 690, y: H-200, w: 30, h: 12, moving: true, moveY: 50, speed: 3.5 },
+    { x: 790, y: H-280, w: 30, h: 12, falling: true, fallDelay: 5 },
+    { x: 880, y: H-350, w: 35, h: 12, moving: true, moveX: 30, speed: 4 },
+    { x: 1000, y: H-280, w: 30, h: 12, falling: true, fallDelay: 4 },
+    { x: 1100, y: H-200, w: 30, h: 12, moving: true, moveY: 40, speed: 4 },
+    { x: 1200, y: H-130, w: 30, h: 12, falling: true, fallDelay: 4 },
+    { x: 1300, y: H-200, w: 20, h: 260, wall: true },
+    { x: 1400, y: H-40, w: 20, h: 260, wall: true },
+    { x: 1300, y: H-460, w: 120, h: 12 },
+    { x: 1470, y: H-380, w: 30, h: 12, falling: true, fallDelay: 5 },
+    { x: 1570, y: H-300, w: 30, h: 12, moving: true, moveX: 30, speed: 4 },
+    { x: 1680, y: H-220, w: 30, h: 12, falling: true, fallDelay: 4 },
+    { x: 1780, y: H-40, w: 80, h: 40 },
+  ];
+  let haz = [
+    { x: 50, y: H-10, w: 1730, h: 20, type: 'lava' },
+    { x: 60, y: 40, w: 10, h: 0, type: 'laser', laserLen: 400, laserCycle: 40, laserOn: 20 },
+    { x: 170, y: H-130, w: 0, h: 0, type: 'saw', r: 20, moveY: 25, speed: 3.5 },
+    { x: 290, y: H-60, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 475, y: H-180, w: 0, h: 0, type: 'saw', r: 22, moveY: 60, speed: 3 },
+    { x: 475, y: H-300, w: 0, h: 0, type: 'saw', r: 18, moveY: 20, speed: 4 },
+    { x: 560, y: 40, w: 10, h: 0, type: 'laser', laserLen: 380, laserCycle: 35, laserOn: 18 },
+    { x: 640, y: H-240, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 740, y: 50, w: 40, h: 60, type: 'crusher', crushSpeed: 9, crushDelay: 30 },
+    { x: 850, y: H-300, w: 0, h: 0, type: 'saw', r: 22, moveX: 20, speed: 3.5 },
+    { x: 950, y: 40, w: 10, h: 0, type: 'laser', laserLen: 400, laserCycle: 35, laserOn: 16 },
+    { x: 1050, y: H-160, w: 0, h: 0, type: 'saw', r: 20, moveY: 30, speed: 3 },
+    { x: 1150, y: H-100, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1350, y: H-300, w: 0, h: 0, type: 'saw', r: 22, moveY: 60, speed: 3 },
+    { x: 1350, y: H-420, w: 0, h: 0, type: 'saw', r: 18 },
+    { x: 1430, y: 40, w: 10, h: 0, type: 'laser', laserLen: 350, laserCycle: 32, laserOn: 15 },
+    { x: 1520, y: H-340, w: 0, h: 0, type: 'saw', r: 20 },
+    { x: 1620, y: H-260, w: 0, h: 0, type: 'saw', r: 22, moveY: 30, speed: 4 },
+    { x: 1730, y: H-180, w: 0, h: 0, type: 'saw', r: 20, moveX: 20, speed: 3 },
+    { x: 1730, y: H-70, w: 0, h: 0, type: 'saw', r: 16 },
+  ];
+  let cns = [
+    { x: 150, y: H-140, r: 10 }, { x: 260, y: H-200, r: 10 },
+    { x: 480, y: H-320, r: 10 }, { x: 730, y: H-240, r: 10 },
+    { x: 920, y: H-390, r: 10 }, { x: 1040, y: H-320, r: 10 },
+    { x: 1360, y: H-420, r: 10 }, { x: 1610, y: H-340, r: 10 },
+  ];
+  return { platforms: plats, hazards: haz, coins: cns, start: { x: 15, y: H-90 }, goal: { x: 1790, y: H-90, w: 40, h: 50 }, bg: 'lava' };
+};
+
+const TOTAL_LEVELS = 10;
 
 // ============= LEVEL SELECT =============
 function buildLevelSelect() {
