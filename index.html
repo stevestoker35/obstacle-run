@@ -1549,76 +1549,118 @@ function updateCamera() {
   if (camera.x < 0) camera.x = 0;
 }
 
-// ============= DRAWING =============
+// ============= CARTOON DRAWING =============
+// Helper: draw rounded rect with thick outline
+function cartoonRect(x,y,w,h,r,fill,stroke,lw) {
+  ctx.fillStyle=fill; ctx.strokeStyle=stroke||'#222'; ctx.lineWidth=lw||3; ctx.lineJoin='round';
+  ctx.beginPath(); r=Math.min(r||6,w/2,h/2);
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  ctx.fill();ctx.stroke();
+}
+// Helper: cartoon circle with outline
+function cartoonCircle(x,y,r,fill,stroke,lw) {
+  ctx.fillStyle=fill;ctx.strokeStyle=stroke||'#222';ctx.lineWidth=lw||3;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+}
+
 function drawBackground() {
   let bg = bgLayers;
-  // Base sky
   let grad;
   if (bg[0] && bg[0].type === 'lava_bg') {
     grad = ctx.createLinearGradient(0,0,0,H);
-    grad.addColorStop(0, '#1a0a00'); grad.addColorStop(0.6, '#331100'); grad.addColorStop(1, '#662200');
+    grad.addColorStop(0, '#ff6633'); grad.addColorStop(0.5, '#cc3300'); grad.addColorStop(1, '#991100');
   } else if (bg[0] && bg[0].type === 'stars') {
     grad = ctx.createLinearGradient(0,0,0,H);
-    grad.addColorStop(0, '#050515'); grad.addColorStop(1, '#0a0a2a');
+    grad.addColorStop(0, '#1a1a4a'); grad.addColorStop(1, '#2a2a6a');
   } else if (bg[0] && bg[0].type === 'gears') {
     grad = ctx.createLinearGradient(0,0,0,H);
-    grad.addColorStop(0, '#1a1a1a'); grad.addColorStop(1, '#2a2a2a');
+    grad.addColorStop(0, '#3a3a4a'); grad.addColorStop(1, '#4a4a5a');
   } else {
     grad = ctx.createLinearGradient(0,0,0,H);
-    grad.addColorStop(0, '#0a1628'); grad.addColorStop(1, '#1a3050');
+    grad.addColorStop(0, '#55aaff'); grad.addColorStop(0.6, '#88ccff'); grad.addColorStop(1, '#aaddff');
   }
   ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
-  // Parallax elements
   for (let layer of bg) {
     let ox = -camera.x * layer.scroll;
     ctx.save();
     if (layer.type === 'stars') {
-      for (let i = 0; i < 60; i++) {
+      // Cartoon stars - 4-pointed
+      for (let i = 0; i < 40; i++) {
         let sx = ((i*73+ox*0.3)%W+W)%W, sy = (i*37)%H*0.7;
-        ctx.fillStyle = `rgba(255,255,255,${0.3+Math.random()*0.4})`;
-        ctx.beginPath(); ctx.arc(sx, sy, 1+Math.random(), 0, Math.PI*2); ctx.fill();
+        let ss = 3+Math.sin(levelTime*0.03+i)*1.5;
+        ctx.fillStyle = '#ffffaa';
+        ctx.save(); ctx.translate(sx,sy); ctx.rotate(levelTime*0.01+i);
+        ctx.beginPath();
+        for(let p=0;p<4;p++){let a=p*Math.PI/2;ctx.lineTo(Math.cos(a)*ss,Math.sin(a)*ss);ctx.lineTo(Math.cos(a+Math.PI/4)*ss*0.3,Math.sin(a+Math.PI/4)*ss*0.3);}
+        ctx.closePath();ctx.fill();ctx.restore();
       }
     }
     if (layer.type === 'moon') {
-      ctx.fillStyle = '#ddeeff';
-      ctx.beginPath(); ctx.arc(((W*0.8+ox*0.5)%W+W)%W, 80, 30, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#bbccdd';
-      ctx.beginPath(); ctx.arc(((W*0.8+ox*0.5)%W+W)%W+5, 75, 8, 0, Math.PI*2); ctx.fill();
+      // Cartoon moon with face
+      let mx=((W*0.8+ox*0.5)%W+W)%W;
+      cartoonCircle(mx, 80, 35, '#ffffcc', '#ddddaa', 3);
+      // Moon face
+      ctx.fillStyle='#cccc88';ctx.beginPath();ctx.arc(mx+8,75,10,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(mx-5,90,6,0,Math.PI*2);ctx.fill();
     }
     if (layer.type === 'city' || layer.type === 'buildings') {
       let bh = layer.type === 'city' ? 0.3 : 0.5;
       let bw = layer.type === 'city' ? 80 : 50;
-      ctx.fillStyle = layer.type === 'city' ? 'rgba(20,30,50,0.6)' : 'rgba(30,40,60,0.5)';
-      for (let i = 0; i < 20; i++) {
+      let colors = ['#6688bb','#5577aa','#7799cc','#4466aa','#5588bb'];
+      for (let i = 0; i < 15; i++) {
         let bx = ((i*bw*1.5 + ox)%(W+bw*20)+W+bw*20)%(W+bw*20) - bw*2;
         let by = H - (i%5+2)*30*bh;
-        ctx.fillRect(bx, by, bw-5, H-by);
-        // Windows
+        cartoonRect(bx, by, bw-5, H-by, 4, colors[i%5], '#334466', 2);
+        // Cartoon windows - yellow squares with outlines
         if (layer.type === 'buildings') {
-          ctx.fillStyle = 'rgba(255,200,50,0.15)';
-          for (let wy = by+8; wy < H-20; wy += 18) {
-            for (let wx = bx+6; wx < bx+bw-12; wx += 12) {
-              if (Math.random()>0.3) ctx.fillRect(wx, wy, 5, 7);
+          for (let wy = by+10; wy < H-25; wy += 20) {
+            for (let wx = bx+8; wx < bx+bw-16; wx += 14) {
+              if ((i+wx+wy)%3!==0) cartoonRect(wx,wy,8,8,2,'#ffee55','#ccaa22',1.5);
             }
           }
-          ctx.fillStyle = 'rgba(30,40,60,0.5)';
         }
       }
     }
     if (layer.type === 'gears') {
-      ctx.strokeStyle = 'rgba(80,80,80,0.2)'; ctx.lineWidth = 3;
+      // Cartoon gears with thick outlines
       for (let i = 0; i < 5; i++) {
         let gx = ((i*200+ox)%(W+800)+W+800)%(W+800) - 100;
-        ctx.beginPath(); ctx.arc(gx, 100+i*80, 40+i*10, 0, Math.PI*2); ctx.stroke();
+        let gr = 40+i*10;
+        ctx.save();ctx.translate(gx,100+i*80);ctx.rotate(levelTime*0.005*(i%2?1:-1));
+        ctx.fillStyle='#667788';ctx.strokeStyle='#445566';ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(0,0,gr,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#778899';
+        for(let t=0;t<8;t++){let a=t*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(a)*gr*0.8,Math.sin(a)*gr*0.8);ctx.lineTo(Math.cos(a-0.25)*gr*1.2,Math.sin(a-0.25)*gr*1.2);ctx.lineTo(Math.cos(a+0.25)*gr*1.2,Math.sin(a+0.25)*gr*1.2);ctx.closePath();ctx.fill();ctx.stroke();}
+        cartoonCircle(0,0,gr*0.25,'#556677','#445566',2);
+        ctx.restore();
       }
     }
     if (layer.type === 'lava_bg') {
-      // Lava glow at bottom
-      let lavaGrad = ctx.createLinearGradient(0, H-80, 0, H);
-      lavaGrad.addColorStop(0, 'rgba(200,50,0,0)');
-      lavaGrad.addColorStop(1, 'rgba(255,80,0,0.3)');
-      ctx.fillStyle = lavaGrad; ctx.fillRect(0, H-80, W, 80);
+      // Cartoon bubbly lava glow
+      let lavaGrad = ctx.createLinearGradient(0, H-100, 0, H);
+      lavaGrad.addColorStop(0, 'rgba(255,100,0,0)');
+      lavaGrad.addColorStop(1, 'rgba(255,150,0,0.5)');
+      ctx.fillStyle = lavaGrad; ctx.fillRect(0, H-100, W, 100);
+      // Lava bubbles in background
+      for(let i=0;i<8;i++){
+        let bx=((i*130+levelTime*0.5+ox)%W+W)%W, by=H-20-Math.abs(Math.sin(levelTime*0.02+i*2))*30;
+        cartoonCircle(bx,by,5+Math.sin(levelTime*0.03+i)*2,'#ff8800','#cc5500',2);
+      }
+    }
+    // Cartoon clouds for non-lava, non-factory
+    if (layer.type === 'city' || layer.type === 'buildings' || layer.type === 'moon') {
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      for(let i=0;i<6;i++){
+        let cx=((i*180+ox*0.8+50)%(W+200)+W+200)%(W+200)-50;
+        let cy=30+i*22;let cr=18+i*3;
+        ctx.beginPath();ctx.arc(cx,cy,cr,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(cx-cr*0.7,cy+4,cr*0.7,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(cx+cr*0.7,cy+4,cr*0.8,0,Math.PI*2);ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -1631,38 +1673,51 @@ function drawPlatforms() {
     if (x + p.w < -50 || x > W + 50) continue;
 
     if (p.wall) {
-      ctx.fillStyle = '#444';
-      ctx.fillRect(x, y, p.w, p.h);
-      ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
-      // Brick pattern
-      for (let by = 0; by < p.h; by += 15) {
-        let off = (Math.floor(by/15)%2) * 10;
-        for (let bx = off; bx < p.w; bx += 20) {
-          ctx.strokeRect(x+bx, y+by, 20, 15);
+      // Cartoon brick wall
+      cartoonRect(x, y, p.w, p.h, 3, '#8888aa', '#555577', 3);
+      ctx.strokeStyle = '#666688'; ctx.lineWidth = 2;
+      for (let by = 0; by < p.h; by += 16) {
+        let off = (Math.floor(by/16)%2) * 11;
+        for (let bx = off; bx < p.w-2; bx += 22) {
+          cartoonRect(x+bx+1, y+by+1, Math.min(20,p.w-bx-2), 14, 2, '#9999bb', '#777799', 1.5);
         }
       }
     } else {
-      // Platform top (grass/metal)
-      ctx.fillStyle = p.falling ? (p.shakeTimer > 0 ? '#aa6633' : '#996633') : '#4a6a3a';
-      ctx.fillRect(x, y, p.w, p.h);
-      // Top edge
-      ctx.fillStyle = p.falling ? '#cc8844' : '#5a8a4a';
-      ctx.fillRect(x, y, p.w, 4);
-      // Edge detail
-      ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, p.w, p.h);
+      // Cartoon platform - rounded with grass on top
+      let mainColor = p.falling ? (p.shakeTimer > 0 ? '#dd8844' : '#cc7733') : '#66bb44';
+      let darkColor = p.falling ? '#aa6622' : '#449922';
+      let topColor = p.falling ? '#ffaa55' : '#88dd55';
 
-      // Warning indicator for falling platforms
+      // Main body with thick outline
+      cartoonRect(x, y, p.w, p.h, 6, mainColor, '#333', 3);
+      // Highlight on top
+      ctx.fillStyle = topColor;
+      ctx.beginPath();
+      let r = Math.min(6, p.w/2);
+      ctx.moveTo(x+r, y); ctx.lineTo(x+p.w-r, y); ctx.quadraticCurveTo(x+p.w,y,x+p.w,y+r);
+      ctx.lineTo(x+p.w, y+5); ctx.lineTo(x, y+5); ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+      ctx.closePath(); ctx.fill();
+
+      // Cartoon grass tufts on normal platforms
+      if (!p.falling && p.h >= 15) {
+        ctx.fillStyle = '#77dd33';
+        for (let gx = 3; gx < p.w-3; gx += 8) {
+          ctx.beginPath();
+          ctx.moveTo(x+gx, y); ctx.lineTo(x+gx+2, y-5-Math.sin(gx)*2); ctx.lineTo(x+gx+4, y);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+
+      // Warning for falling platforms - cartoon exclamation
       if (p.falling && !p.stepped) {
-        ctx.fillStyle = 'rgba(255,100,0,0.3)';
-        ctx.fillRect(x, y, p.w, p.h);
-        // Exclamation mark
-        ctx.fillStyle = '#ff6600'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
-        ctx.fillText('!', x+p.w/2, y-5);
+        ctx.fillStyle = '#ff4400'; ctx.strokeStyle = '#aa2200'; ctx.lineWidth = 2;
+        ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+        ctx.strokeText('!', x+p.w/2, y-6); ctx.fillText('!', x+p.w/2, y-6);
       }
       if (p.falling && p.shakeTimer > 0) {
-        ctx.fillStyle = 'rgba(255,50,0,0.2)';
-        ctx.fillRect(x, y, p.w, p.h);
+        // Crack lines
+        ctx.strokeStyle = '#aa4400'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x+p.w*0.3,y+2); ctx.lineTo(x+p.w*0.5,y+p.h*0.6); ctx.lineTo(x+p.w*0.7,y+3); ctx.stroke();
       }
     }
   }
@@ -1673,83 +1728,99 @@ function drawHazards() {
     let x = h.x - camera.x, y = h.y - camera.y;
 
     if (h.type === 'spikes') {
-      ctx.fillStyle = '#aaa';
-      for (let sx = 0; sx < h.w; sx += 12) {
+      // Cartoon spikes - bright red with thick outlines
+      for (let sx = 0; sx < h.w; sx += 14) {
+        ctx.fillStyle = '#ff4444';
+        ctx.strokeStyle = '#aa0000'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
         ctx.beginPath();
-        ctx.moveTo(x+sx, y+h.h); ctx.lineTo(x+sx+6, y); ctx.lineTo(x+sx+12, y+h.h);
-        ctx.closePath(); ctx.fill();
-      }
-      ctx.fillStyle = '#cc3333';
-      for (let sx = 0; sx < h.w; sx += 12) {
-        ctx.beginPath();
-        ctx.moveTo(x+sx+3, y+h.h*0.4); ctx.lineTo(x+sx+6, y); ctx.lineTo(x+sx+9, y+h.h*0.4);
-        ctx.closePath(); ctx.fill();
+        ctx.moveTo(x+sx, y+h.h); ctx.lineTo(x+sx+7, y-2); ctx.lineTo(x+sx+14, y+h.h);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Shine
+        ctx.fillStyle = '#ff8888';
+        ctx.beginPath(); ctx.moveTo(x+sx+5,y+h.h*0.5); ctx.lineTo(x+sx+7,y+2); ctx.lineTo(x+sx+8,y+h.h*0.5); ctx.closePath(); ctx.fill();
       }
     }
     if (h.type === 'lava') {
-      // Lava pool
-      ctx.fillStyle = '#cc3300';
-      ctx.fillRect(x, y, h.w, h.h);
-      // Animated surface
-      ctx.fillStyle = '#ff6600';
-      for (let lx = 0; lx < h.w; lx += 20) {
-        let ly = Math.sin((lx + levelTime * 2) * 0.05) * 3;
-        ctx.beginPath();
-        ctx.arc(x + lx + 10, y + ly, 8, Math.PI, 0); ctx.fill();
+      // Cartoon lava - bubbly and bright
+      cartoonRect(x, y, h.w, h.h+5, 4, '#ff4400', '#cc2200', 3);
+      // Wavy surface
+      ctx.fillStyle = '#ff7700'; ctx.strokeStyle = '#cc4400'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y+5);
+      for (let lx = 0; lx <= h.w; lx += 15) {
+        let ly = Math.sin((lx + levelTime * 2) * 0.06) * 5;
+        ctx.lineTo(x + lx, y + ly);
       }
-      ctx.fillStyle = '#ffaa00';
-      for (let lx = 10; lx < h.w; lx += 30) {
-        let ly = Math.sin((lx + levelTime * 3) * 0.04) * 2;
-        ctx.beginPath();
-        ctx.arc(x + lx, y - 2 + ly, 4, Math.PI, 0); ctx.fill();
+      ctx.lineTo(x+h.w, y+10); ctx.lineTo(x, y+10); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Bright yellow highlights
+      ctx.fillStyle = '#ffcc00';
+      for (let lx = 8; lx < h.w-8; lx += 25) {
+        let ly = Math.sin((lx + levelTime * 2.5) * 0.05) * 3;
+        cartoonCircle(x+lx, y+ly-1, 4+Math.sin(levelTime*0.04+lx)*1.5, '#ffcc00', '#ff8800', 1.5);
       }
-      // Glow
-      ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 15;
-      ctx.fillStyle = 'rgba(255,100,0,0.1)'; ctx.fillRect(x, y-10, h.w, 10);
-      ctx.shadowBlur = 0;
+      // Cartoon bubbles popping
+      for(let i=0;i<3;i++){
+        let bx=x+((i*97+levelTime*1.5)%h.w), by=y-5-Math.abs(Math.sin(levelTime*0.04+i*3))*12;
+        if(Math.sin(levelTime*0.02+i*5)>0) cartoonCircle(bx,by,3+Math.sin(levelTime*0.05+i)*1,'#ffaa44','#cc6600',1.5);
+      }
     }
     if (h.type === 'saw') {
       let sr = h.r || 20;
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(levelTime * 0.08);
-      // Blade
-      ctx.fillStyle = '#999';
-      ctx.beginPath(); ctx.arc(0, 0, sr, 0, Math.PI*2); ctx.fill();
-      // Teeth
-      ctx.fillStyle = '#bbb';
-      for (let t = 0; t < 8; t++) {
-        let a = t * Math.PI / 4;
+      ctx.rotate(levelTime * 0.1);
+      // Cartoon saw - bright with thick outline and angry face
+      ctx.fillStyle = '#cccccc'; ctx.strokeStyle = '#555'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, sr, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      // Big cartoon teeth
+      ctx.fillStyle = '#eeeeee'; ctx.strokeStyle = '#666'; ctx.lineWidth = 2;
+      for (let t = 0; t < 10; t++) {
+        let a = t * Math.PI / 5;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a)*sr*0.7, Math.sin(a)*sr*0.7);
-        ctx.lineTo(Math.cos(a-0.2)*sr*1.1, Math.sin(a-0.2)*sr*1.1);
-        ctx.lineTo(Math.cos(a+0.2)*sr*1.1, Math.sin(a+0.2)*sr*1.1);
-        ctx.closePath(); ctx.fill();
+        ctx.moveTo(Math.cos(a)*sr*0.75, Math.sin(a)*sr*0.75);
+        ctx.lineTo(Math.cos(a-0.18)*sr*1.15, Math.sin(a-0.18)*sr*1.15);
+        ctx.lineTo(Math.cos(a+0.18)*sr*1.15, Math.sin(a+0.18)*sr*1.15);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
       }
-      // Center
-      ctx.fillStyle = '#666'; ctx.beginPath(); ctx.arc(0,0,sr*0.3,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(0,0,sr*0.15,0,Math.PI*2); ctx.fill();
+      // Center hub
+      cartoonCircle(0, 0, sr*0.35, '#ff4444', '#aa0000', 2.5);
+      // Angry cartoon eyes on saw
+      ctx.save(); ctx.rotate(-levelTime*0.1); // counter-rotate so face stays upright
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(-sr*0.15,-sr*0.08,sr*0.12,sr*0.14,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(sr*0.15,-sr*0.08,sr*0.12,sr*0.14,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#111';ctx.beginPath();ctx.arc(-sr*0.12,-sr*0.08,sr*0.06,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(sr*0.18,-sr*0.08,sr*0.06,0,Math.PI*2);ctx.fill();
+      // Angry eyebrows
+      ctx.strokeStyle='#222';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(-sr*0.25,-sr*0.22);ctx.lineTo(-sr*0.05,-sr*0.18);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(sr*0.25,-sr*0.22);ctx.lineTo(sr*0.05,-sr*0.18);ctx.stroke();
+      // Evil grin
+      ctx.strokeStyle='#222';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,sr*0.08,sr*0.15,0.2,Math.PI-0.2);ctx.stroke();
+      ctx.restore();
       ctx.restore();
     }
     if (h.type === 'crusher') {
       let cy = h.crushY - camera.y;
-      ctx.fillStyle = '#666';
-      ctx.fillRect(x, 0, h.w, cy);
-      // Crusher face
-      ctx.fillStyle = '#888';
-      ctx.fillRect(x, cy, h.w, h.h);
-      // Teeth on bottom
-      ctx.fillStyle = '#aaa';
-      for (let cx2 = 0; cx2 < h.w; cx2 += 10) {
+      // Cartoon crusher - big block with face
+      cartoonRect(x-2, 0, h.w+4, cy+h.h, 4, '#8888aa', '#444', 3);
+      // Danger stripes
+      for (let sy = 0; sy < h.h; sy += 14) {
+        ctx.fillStyle = sy%28<14 ? '#ffcc00' : '#222';
+        ctx.fillRect(x+3, cy+sy, h.w-6, 12);
+      }
+      // Cartoon teeth on bottom
+      ctx.fillStyle = '#dddddd'; ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+      for (let cx2 = 0; cx2 < h.w; cx2 += 12) {
         ctx.beginPath();
-        ctx.moveTo(x+cx2, cy+h.h); ctx.lineTo(x+cx2+5, cy+h.h+8); ctx.lineTo(x+cx2+10, cy+h.h);
-        ctx.closePath(); ctx.fill();
+        ctx.moveTo(x+cx2, cy+h.h); ctx.lineTo(x+cx2+6, cy+h.h+10); ctx.lineTo(x+cx2+12, cy+h.h);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
       }
-      // Warning stripes
-      ctx.fillStyle = '#ffaa00';
-      for (let sy = 0; sy < h.h; sy += 12) {
-        ctx.fillRect(x+2, cy+sy, h.w-4, 4);
-      }
+      // Angry face on crusher
+      let fy=cy+h.h*0.4;
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(x+h.w*0.3,fy,5,6,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(x+h.w*0.7,fy,5,6,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#f00';ctx.beginPath();ctx.arc(x+h.w*0.3,fy,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+h.w*0.7,fy,3,0,Math.PI*2);ctx.fill();
     }
     if (h.type === 'laser') {
       let cycle = h.laserCycle || 120;
@@ -1757,27 +1828,30 @@ function drawHazards() {
       let isOn = h.timer % cycle < onTime;
       let warning = h.timer % cycle > cycle - 30;
 
-      // Emitter
-      ctx.fillStyle = isOn ? '#ff0000' : '#660000';
-      ctx.fillRect(x-3, y-5, (h.w||10)+6, 10);
+      // Cartoon emitter box
+      cartoonRect(x-5, y-8, (h.w||10)+10, 16, 4, isOn?'#ff2222':'#884444', '#333', 3);
+      // Lens
+      cartoonCircle(x+(h.w||10)/2, y, 5, isOn?'#ff0000':'#662222', '#333', 2);
 
       if (isOn) {
-        // Laser beam
         let len = h.laserLen || 300;
-        ctx.fillStyle = 'rgba(255,0,0,0.8)';
-        ctx.fillRect(x, y, h.w||10, len);
-        ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 20;
-        ctx.fillStyle = 'rgba(255,100,100,0.4)';
-        ctx.fillRect(x-5, y, (h.w||10)+10, len);
-        ctx.shadowBlur = 0;
-        // Core
-        ctx.fillStyle = 'rgba(255,200,200,0.9)';
-        ctx.fillRect(x+2, y, (h.w||10)-4, len);
+        // Cartoon beam - wider with outline
+        ctx.fillStyle = '#ff0000'; ctx.strokeStyle = '#cc0000'; ctx.lineWidth = 2;
+        ctx.fillRect(x-1, y+8, (h.w||10)+2, len);
+        ctx.strokeRect(x-1, y+8, (h.w||10)+2, len);
+        // Bright core
+        ctx.fillStyle = '#ff8888';
+        ctx.fillRect(x+2, y+8, (h.w||10)-4, len);
+        // Cartoon zap effects along beam
+        ctx.strokeStyle = '#ffaaaa'; ctx.lineWidth = 1.5;
+        for(let zy=20;zy<len;zy+=30){
+          ctx.beginPath();ctx.moveTo(x-3,y+8+zy);ctx.lineTo(x+6,y+8+zy+5);ctx.lineTo(x-2,y+8+zy+10);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(x+(h.w||10)+3,y+8+zy+15);ctx.lineTo(x+(h.w||10)-4,y+8+zy+20);ctx.lineTo(x+(h.w||10)+2,y+8+zy+25);ctx.stroke();
+        }
       } else if (warning) {
-        // Warning flicker
-        if (Math.floor(h.timer/4) % 2 === 0) {
-          ctx.fillStyle = 'rgba(255,0,0,0.2)';
-          ctx.fillRect(x, y, h.w||10, h.laserLen||300);
+        if (Math.floor(h.timer/5) % 2 === 0) {
+          ctx.fillStyle = 'rgba(255,50,50,0.25)';
+          ctx.fillRect(x, y+8, h.w||10, h.laserLen||300);
         }
       }
     }
@@ -1787,165 +1861,238 @@ function drawHazards() {
 function drawCoins() {
   for (let c of coins) {
     if (c.collected) continue;
-    let x = c.x - camera.x, y = c.y + Math.sin(c.bobTimer)*4 - camera.y;
-    // Glow
-    ctx.fillStyle = 'rgba(255,215,0,0.2)';
-    ctx.beginPath(); ctx.arc(x, y, c.r+5, 0, Math.PI*2); ctx.fill();
-    // Coin
-    ctx.fillStyle = '#FFD700';
-    ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.arc(x, y, c.r, 0, Math.PI*2); ctx.fill();
-    ctx.shadowBlur = 0;
-    // Shine
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.beginPath(); ctx.arc(x-3, y-3, c.r*0.4, 0, Math.PI*2); ctx.fill();
+    let x = c.x - camera.x, y = c.y + Math.sin(c.bobTimer)*5 - camera.y;
+    // Squash & stretch
+    let stretch = 1 + Math.sin(c.bobTimer)*0.1;
+    ctx.save(); ctx.translate(x,y); ctx.scale(1/stretch, stretch);
+    // Cartoon coin with big outline
+    cartoonCircle(0, 0, c.r+1, '#FFD700', '#CC9900', 3);
+    // Dollar sign or star
+    ctx.fillStyle = '#ffee66'; ctx.font = 'bold '+(c.r)+'px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('$', 0, c.r*0.4);
+    // Cartoon shine - star shape
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.beginPath(); ctx.arc(-c.r*0.3, -c.r*0.3, c.r*0.3, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
   }
 }
 
 function drawGoal() {
   let x = goal.x - camera.x, y = goal.y - camera.y;
-  // Flag pole
-  ctx.fillStyle = '#888';
-  ctx.fillRect(x+goal.w/2-2, y-20, 4, goal.h+20);
-  // Flag
-  let wave = Math.sin(levelTime*0.08)*3;
-  ctx.fillStyle = '#44ff66';
+  // Cartoon flag pole
+  cartoonRect(x+goal.w/2-3, y-25, 6, goal.h+25, 2, '#888', '#555', 2);
+  // Cartoon flag - wavy with outline
+  let wave = Math.sin(levelTime*0.1)*5;
+  ctx.fillStyle = '#44ff66'; ctx.strokeStyle = '#22aa44'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
   ctx.beginPath();
-  ctx.moveTo(x+goal.w/2+2, y-15);
-  ctx.lineTo(x+goal.w/2+25+wave, y-8);
-  ctx.lineTo(x+goal.w/2+2, y);
-  ctx.closePath(); ctx.fill();
-  // Glow
-  ctx.fillStyle = `rgba(68,255,102,${0.15+Math.sin(levelTime*0.05)*0.1})`;
-  ctx.beginPath(); ctx.arc(x+goal.w/2, y+goal.h/2, 30, 0, Math.PI*2); ctx.fill();
+  ctx.moveTo(x+goal.w/2+3, y-20);
+  ctx.quadraticCurveTo(x+goal.w/2+15+wave, y-18, x+goal.w/2+28+wave, y-10);
+  ctx.quadraticCurveTo(x+goal.w/2+15-wave, y-5, x+goal.w/2+3, y+2);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Star on flag
+  ctx.fillStyle='#ffffaa'; ctx.font='bold 14px Arial'; ctx.textAlign='center';
+  ctx.fillText('\u2605', x+goal.w/2+15+wave*0.5, y-7);
+  // Cartoon glow ring
+  ctx.strokeStyle = `rgba(68,255,102,${0.3+Math.sin(levelTime*0.06)*0.2})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(x+goal.w/2, y+goal.h/2, 25+Math.sin(levelTime*0.05)*5, 0, Math.PI*2); ctx.stroke();
+  // Sparkles
+  for(let i=0;i<4;i++){
+    let a=levelTime*0.04+i*Math.PI/2, d=30+Math.sin(levelTime*0.06+i)*8;
+    ctx.fillStyle='#ffffaa';ctx.beginPath();ctx.arc(x+goal.w/2+Math.cos(a)*d,y+goal.h/2+Math.sin(a)*d,2+Math.sin(levelTime*0.1+i),0,Math.PI*2);ctx.fill();
+  }
 }
 
 function drawPlayer() {
   if (player.dead) return;
   let x = player.x - camera.x, y = player.y - camera.y;
 
+  // Squash & stretch effect
+  let squashX = 1, squashY = 1;
+  if (!player.onGround && player.vy < -3) { squashX = 0.85; squashY = 1.2; } // jumping up = stretch tall
+  else if (!player.onGround && player.vy > 5) { squashX = 1.15; squashY = 0.85; } // falling = squash wide
+  else if (player.onGround && Math.abs(player.vx) > 3) { squashX = 1.05; squashY = 0.95; } // running = slight squash
+
   ctx.save();
   ctx.translate(x + player.w/2, y + player.h/2);
+  ctx.scale(squashX, squashY);
   if (player.facing === -1) ctx.scale(-1, 1);
 
   if (player.sliding) {
-    // Sliding pose
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath(); ctx.ellipse(0, 2, 18, 10, 0, 0, Math.PI*2); ctx.fill();
+    // Cartoon slide pose
+    cartoonRect(-18, -6, 36, 16, 8, '#222', '#000', 3);
     // Head
-    ctx.fillStyle = '#4a3528';
-    ctx.beginPath(); ctx.arc(-6, -4, 8, 0, Math.PI*2); ctx.fill();
+    cartoonCircle(-8, -8, 10, '#6B4226', '#3a2010', 3);
+    // Eye
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(-3,-10,4,5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(-1,-10,2.5,0,Math.PI*2);ctx.fill();
+    // Determined mouth
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-5,-4);ctx.lineTo(1,-4);ctx.stroke();
+    // Speed lines
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(15+i*6,-3+i*3);ctx.lineTo(22+i*6,-3+i*3);ctx.stroke();}
   } else {
-    // Body
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(-8, -8, 16, 22);
+    // === CARTOON CHARACTER ===
+    // Legs with animation
+    let legAnim = player.onGround ? Math.sin(player.animTimer * 0.35) * (Math.abs(player.vx) > 0.5 ? 10 : 0) : -4;
+    // Left leg
+    ctx.save(); ctx.translate(-5, 12); ctx.rotate(legAnim*0.06);
+    cartoonRect(-4, 0, 8, 13, 3, '#333355', '#222', 2.5);
+    // Left shoe
+    cartoonRect(-5, 11, 10, 5, 3, '#ee3333', '#aa0000', 2);
+    ctx.restore();
+    // Right leg
+    ctx.save(); ctx.translate(5, 12); ctx.rotate(-legAnim*0.06);
+    cartoonRect(-4, 0, 8, 13, 3, '#333355', '#222', 2.5);
+    // Right shoe
+    cartoonRect(-5, 11, 10, 5, 3, '#ee3333', '#aa0000', 2);
+    ctx.restore();
 
-    // Head
-    ctx.fillStyle = '#4a3528';
-    ctx.beginPath(); ctx.arc(0, -14, 10, 0, Math.PI*2); ctx.fill();
-
-    // Eyes
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.ellipse(3, -16, 3, 3.5, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(4, -16, 1.8, 0, Math.PI*2); ctx.fill();
-
-    // Mouth
-    if (player.onGround) {
-      ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(2, -11, 3, 0, Math.PI); ctx.stroke();
-    }
-
-    // Hair
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(0, -18, 10, Math.PI, 0); ctx.fill();
-    ctx.beginPath(); ctx.arc(-2, -19, 8, Math.PI+0.3, -0.3); ctx.fill();
-
-    // Legs
-    let legAnim = player.onGround ? Math.sin(player.animTimer * 0.3) * (Math.abs(player.vx) > 0.5 ? 8 : 0) : -3;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(-7, 14, 6, 10 + legAnim * 0.3);
-    ctx.fillRect(1, 14, 6, 10 - legAnim * 0.3);
-
-    // Shoes
-    ctx.fillStyle = '#cc2222';
-    ctx.fillRect(-8, 22 + legAnim * 0.3, 8, 4);
-    ctx.fillRect(0, 22 - legAnim * 0.3, 8, 4);
+    // Body - round torso
+    cartoonRect(-10, -10, 20, 24, 6, '#222', '#000', 3);
+    // Shirt detail
+    ctx.fillStyle='#444';ctx.fillRect(-6,-4,12,2);
 
     // Arms
-    let armAnim = player.onGround ? -legAnim : 5;
-    ctx.fillStyle = '#4a3528';
-    ctx.save();
-    ctx.translate(-8, -4);
-    ctx.rotate(armAnim * 0.04);
-    ctx.fillRect(-3, 0, 4, 14);
+    let armAnim = player.onGround ? -legAnim : 6;
+    ctx.save(); ctx.translate(-10, -4); ctx.rotate(armAnim*0.05);
+    cartoonRect(-2, -1, 6, 15, 3, '#6B4226', '#3a2010', 2.5);
+    // Hand
+    cartoonCircle(1, 14, 3.5, '#6B4226', '#3a2010', 2);
     ctx.restore();
-    ctx.save();
-    ctx.translate(8, -4);
-    ctx.rotate(-armAnim * 0.04);
-    ctx.fillRect(-1, 0, 4, 14);
+    ctx.save(); ctx.translate(10, -4); ctx.rotate(-armAnim*0.05);
+    cartoonRect(-4, -1, 6, 15, 3, '#6B4226', '#3a2010', 2.5);
+    cartoonCircle(-1, 14, 3.5, '#6B4226', '#3a2010', 2);
     ctx.restore();
 
-    // Wall slide effect
+    // Head - big cartoon head
+    cartoonCircle(0, -18, 13, '#6B4226', '#3a2010', 3);
+
+    // Hair - puffy cartoon hair
+    ctx.fillStyle = '#222'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, -22, 13, Math.PI+0.2, -0.2);
+    ctx.quadraticCurveTo(14,-28,10,-35);
+    ctx.quadraticCurveTo(5,-30,0,-34);
+    ctx.quadraticCurveTo(-5,-30,-10,-35);
+    ctx.quadraticCurveTo(-14,-28,-13,-22);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    // Big cartoon eyes
+    ctx.fillStyle='#fff'; ctx.strokeStyle='#222'; ctx.lineWidth=2;
+    ctx.beginPath();ctx.ellipse(-4,-19,5,6,-0.1,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.ellipse(6,-19,5,6,0.1,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // Pupils - look in movement direction
+    let pupilOff = Math.min(2, player.vx * 0.3);
+    ctx.fillStyle='#111';
+    ctx.beginPath();ctx.arc(-3+pupilOff,-19,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(7+pupilOff,-19,2.5,0,Math.PI*2);ctx.fill();
+    // Eye shine
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(-4+pupilOff,-20.5,1.2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(6+pupilOff,-20.5,1.2,0,Math.PI*2);ctx.fill();
+
+    // Eyebrows - expressive
+    ctx.strokeStyle='#222';ctx.lineWidth=2.5;
+    if(!player.onGround && player.vy < 0) {
+      // Excited eyebrows (raised)
+      ctx.beginPath();ctx.moveTo(-8,-27);ctx.quadraticCurveTo(-4,-30,0,-27);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(3,-27);ctx.quadraticCurveTo(7,-30,11,-27);ctx.stroke();
+    } else {
+      // Normal eyebrows
+      ctx.beginPath();ctx.moveTo(-8,-25);ctx.quadraticCurveTo(-4,-27,0,-25);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(3,-25);ctx.quadraticCurveTo(7,-27,11,-25);ctx.stroke();
+    }
+
+    // Mouth
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.lineCap='round';
+    if (!player.onGround && player.vy < -5) {
+      // Excited open mouth
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(2,-12,4,3,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#3a2010';ctx.stroke();
+    } else if (!player.onGround && player.vy > 5) {
+      // Scared mouth
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(2,-11,3,4,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#3a2010';ctx.stroke();
+    } else if (Math.abs(player.vx) > 2) {
+      // Running grin
+      ctx.beginPath();ctx.arc(2,-12,4,0.1,Math.PI-0.1);ctx.stroke();
+    } else {
+      // Idle smile
+      ctx.beginPath();ctx.arc(2,-12,3,0.2,Math.PI-0.2);ctx.stroke();
+    }
+    ctx.lineCap='butt';
+
+    // Wall slide sparks
     if (player.wallSliding) {
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.arc((Math.random()-0.5)*10, 10+i*6, 2, 0, Math.PI*2);
-        ctx.fill();
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle=['#ffdd44','#ffaa22','#ff8800','#ffee66'][i];
+        ctx.beginPath();ctx.arc((Math.random()-0.5)*8, 8+i*5, 2+Math.random()*2, 0, Math.PI*2);ctx.fill();
       }
     }
 
-    // Double jump indicator
+    // Double jump ring
     if (!player.onGround && !player.doubleJump && player.hasDoubleJump) {
-      ctx.strokeStyle = 'rgba(68,221,255,0.5)'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(0, player.h/2 + 5, 8, 0, Math.PI*2); ctx.stroke();
+      ctx.strokeStyle='#44ddff';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.arc(0, player.h/2+5, 10+Math.sin(levelTime*0.1)*2, 0, Math.PI*2);ctx.stroke();
+      // Small sparkles
+      for(let i=0;i<3;i++){let a=levelTime*0.08+i*Math.PI*2/3;ctx.fillStyle='#aaeeff';ctx.beginPath();ctx.arc(Math.cos(a)*11,player.h/2+5+Math.sin(a)*11,2,0,Math.PI*2);ctx.fill();}
     }
   }
 
   ctx.restore();
-
-  // Invulnerability flash after respawn would go here
 }
 
 function drawParticles() {
   for (let p of particles) {
     let a = p.life / p.maxLife;
     ctx.globalAlpha = a;
+    // Cartoon particles - circles with outlines
     ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x - camera.x, p.y - camera.y, p.r * a, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(p.x - camera.x, p.y - camera.y, p.r * a + 1, 0, Math.PI*2); ctx.fill(); ctx.stroke();
   }
   ctx.globalAlpha = 1;
   for (let ft of floatingTexts) {
     let a = ft.life / ft.maxLife;
     ctx.globalAlpha = a;
+    let scale = 1 + (1-a)*0.3; // Pop in effect
+    ctx.save();
+    ctx.translate(ft.x - camera.x, ft.y - camera.y);
+    ctx.scale(scale, scale);
+    // Text with outline
     ctx.fillStyle = ft.color;
-    ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-    ctx.fillText(ft.text, ft.x - camera.x, ft.y - camera.y);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
+    ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center';
+    ctx.strokeText(ft.text, 0, 0);
+    ctx.fillText(ft.text, 0, 0);
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 }
 
 function drawHUD() {
-  // Level & time
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(10, 10, 180, 36);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Segoe UI'; ctx.textAlign = 'left';
-  ctx.fillText('Level ' + currentLevel, 20, 32);
-  ctx.fillStyle = '#aaa'; ctx.font = '14px Segoe UI';
-  ctx.fillText((levelTime/60).toFixed(1) + 's', 100, 32);
+  // Cartoon HUD box
+  cartoonRect(8, 8, 190, 40, 10, 'rgba(0,0,0,0.6)', '#ffcc00', 3);
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+  ctx.font = 'bold 18px Arial'; ctx.textAlign = 'left';
+  ctx.strokeText('Level ' + currentLevel, 20, 34);
+  ctx.fillText('Level ' + currentLevel, 20, 34);
+  ctx.fillStyle = '#aaeeff'; ctx.font = 'bold 14px Arial';
+  ctx.fillText((levelTime/60).toFixed(1) + 's', 108, 34);
 
-  // Coins collected
+  // Coins
   let total = coins.length, got = coins.filter(c=>c.collected).length;
-  ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px Segoe UI';
-  ctx.fillText(got + '/' + total, 155, 32);
+  ctx.fillStyle = '#FFD700'; ctx.font = 'bold 15px Arial';
+  ctx.strokeText(got + '/' + total, 160, 34);
+  ctx.fillText(got + '/' + total, 160, 34);
 
-  // Deaths
+  // Deaths counter
   if (deathCount > 0) {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(10, 50, 100, 24);
-    ctx.fillStyle = '#ff6666'; ctx.font = '13px Segoe UI';
-    ctx.fillText('Deaths: ' + deathCount, 20, 67);
+    cartoonRect(8, 52, 110, 28, 8, 'rgba(0,0,0,0.6)', '#ff4444', 2);
+    ctx.fillStyle = '#ff6666'; ctx.font = 'bold 14px Arial';
+    ctx.fillText('Deaths: ' + deathCount, 18, 71);
   }
 }
 
